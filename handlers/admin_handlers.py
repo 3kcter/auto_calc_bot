@@ -31,10 +31,10 @@ async def process_exit_admin_press(callback: CallbackQuery, state: FSMContext):
 
 @admin_router.callback_query(F.data.startswith('edit_'), StateFilter(AdminFSM.menu))
 async def process_edit_press(callback: CallbackQuery, state: FSMContext):
-    param_to_edit = callback.data.split('_')[-1]
+    param_to_edit = callback.data.removeprefix('edit_')
     await state.update_data(param_to_edit=param_to_edit)
     await callback.message.edit_text(
-        text=f"{LEXICON_RU['enter_new_value']} "{LEXICON_RU['calc_config_fields'][param_to_edit]}":",
+        text=f"{LEXICON_RU['enter_new_value']} {LEXICON_RU['calc_config_fields'][param_to_edit]}:",
         reply_markup=create_edit_keyboard(param_to_edit)
     )
     await state.set_state(AdminFSM.edit_param)

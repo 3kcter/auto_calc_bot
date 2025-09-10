@@ -87,8 +87,16 @@ def _calculate_recycling_fee(age, volume, engine_type):
 def _calculate_customs_clearance(cost_rub):
     return _get_rate_from_table(cost_rub, CUSTOMS_CLEARANCE_FEES)
 
-async def calculate_cost(age: str, cost: int, currency: str, volume: int, calc_config: CalcConfig, engine_type: str = 'ice') -> dict:
+COUNTRY_CURRENCY_MAP = {
+    'china': 'CNY',
+    'korea': 'KRW'
+}
+
+async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_config: CalcConfig, engine_type: str = 'ice') -> dict:
     rates = await get_rates()
+    
+    currency = COUNTRY_CURRENCY_MAP.get(country)
+    
     cost_rub = cost * rates.get(currency, 1.0)
     eur_rate = rates.get('EUR', 90.0)
     cost_eur = cost_rub / eur_rate
@@ -99,8 +107,14 @@ async def calculate_cost(age: str, cost: int, currency: str, volume: int, calc_c
     recycling_fee = _calculate_recycling_fee(age, volume, engine_type)
     customs_clearance = _calculate_customs_clearance(cost_rub)
 
-    total_cost = (
-        cost_rub + calc_config.korea_dealer_commission + customs_payments + recycling_fee +
+    dealer_commission = 0
+    if country == 'korea':
+        dealer_commission = calc_config.korea_dealer_commission
+    elif country == 'china':
+        dealer_commission = calc_config.china_dealer_commission
+
+    total_cost_rub = (
+        cost_rub + dealer_commission + customs_payments + recycling_fee +
         customs_clearance + calc_config.sbkts_and_epts +
         calc_config.loading_and_unloading_and_temporary_storage + calc_config.ferry + calc_config.other_expenses
     )
@@ -108,7 +122,11 @@ async def calculate_cost(age: str, cost: int, currency: str, volume: int, calc_c
     vat = 0
     if engine_type == 'electro':
         vat = (cost_rub + customs_payments) * 0.20
-        total_cost += vat
+        total_cost_rub += vat
+
+    # Convert total_cost_rub back to original currency
+    rate_to_original_currency = rates.get(currency, 1.0)
+    total_cost_original_currency = total_cost_rub / rate_to_original_currency
 
     return {
         "car_cost": cost_rub,
@@ -121,5 +139,6 @@ async def calculate_cost(age: str, cost: int, currency: str, volume: int, calc_c
         "ferry": calc_config.ferry,
         "other_expenses": calc_config.other_expenses,
         "vat": vat,
-        "total_cost": total_cost,
+        "total_cost": total_cost_original_currency,
+        "total_cost_rub": total_cost_rub,
     }

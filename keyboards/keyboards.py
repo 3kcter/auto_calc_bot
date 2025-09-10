@@ -11,10 +11,9 @@ def create_main_menu_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text=LEXICON_RU['calculator'], callback_data='calculator'),
         InlineKeyboardButton(text=LEXICON_RU['exchange_rates'], callback_data='exchange_rates')
     )
-    builder.row(
-        InlineKeyboardButton(text=LEXICON_RU['calculate_by_url'], callback_data='calculate_by_url')
-    )
     return builder.as_markup()
+
+
 
 def create_year_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -29,14 +28,11 @@ def create_year_keyboard() -> InlineKeyboardMarkup:
     )
     return builder.as_markup()
 
-def create_currency_keyboard() -> InlineKeyboardMarkup:
+def create_country_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text=LEXICON_RU['rub'], callback_data='RUB'),
-        InlineKeyboardButton(text=LEXICON_RU['eur'], callback_data='EUR'),
-        InlineKeyboardButton(text=LEXICON_RU['usd'], callback_data='USD'),
-        InlineKeyboardButton(text=LEXICON_RU['cny'], callback_data='CNY'),
-        InlineKeyboardButton(text=LEXICON_RU['krw'], callback_data='KRW')
+        InlineKeyboardButton(text=LEXICON_RU['china'], callback_data='china'),
+        InlineKeyboardButton(text=LEXICON_RU['korea'], callback_data='korea')
     )
     builder.row(
         InlineKeyboardButton(text=LEXICON_RU['back'], callback_data='back')

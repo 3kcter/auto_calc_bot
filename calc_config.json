@@ -1,6 +1,7 @@
 {
     "korea_dealer_commission": 100000,
-    "sbkts_and_epts": 40000,
+    "china_dealer_commission": 80000,
+    "sbkts_and_epts": 50000,
     "loading_and_unloading_and_temporary_storage": 25000,
     "ferry": 35000,
     "other_expenses": 10000

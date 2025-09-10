@@ -17,6 +17,7 @@ class LogSettings:
 @dataclass
 class CalcConfig:
     korea_dealer_commission: int
+    china_dealer_commission: int
     sbkts_and_epts: int
     loading_and_unloading_and_temporary_storage: int
     ferry: int
