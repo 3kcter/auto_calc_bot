@@ -18,10 +18,12 @@ class LogSettings:
 class CalcConfig:
     korea_dealer_commission: int
     china_dealer_commission: int
-    sbkts_and_epts: int
-    loading_and_unloading_and_temporary_storage: int
-    ferry: int
-    other_expenses: int
+    china_documents_delivery_cny: int
+    logistics_kazan_usd: int
+    logistics_kazan_rub: int
+    
+    lab_svh_kazan_rub: int
+    lab_svh_not_kazan_rub: int
 
 @dataclass
 class Config:

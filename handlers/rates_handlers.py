@@ -4,6 +4,7 @@ from aiogram.fsm.context import FSMContext
 
 from lexicon.lexicon import LEXICON_RU
 from services.cache import get_rates
+from keyboards.keyboards import create_rates_keyboard
 
 rates_router = Router()
 
@@ -56,6 +57,7 @@ async def process_rates_press(callback: CallbackQuery, state: FSMContext):
         rates_text += f"{LEXICON_RU['krw']}: {krw_rate} руб.\n"
 
     await callback.message.answer(
-        text=rates_text
+        text=rates_text,
+        reply_markup=create_rates_keyboard()
     )
     await callback.answer()

@@ -61,12 +61,18 @@ LEXICON_RU: dict[str, str| dict[str, str]] = {
     'enter_new_value': 'Введите новое значение для',
     'value_updated': '✅ Значение обновлено!',
     'exit_admin': 'Выйти из админ-панели',
+    'yes': 'Да',
+    'no': 'Нет',
+    'is_from_kazan_question': 'Вы из Казани?',
+    'detailed_calculation': 'Детальный расчёт',
     'calc_config_fields': {
-        'korea_dealer_commission': 'Комиссия дилера в Корее',
-        'china_dealer_commission': 'Комиссия дилера в Китае',
-        'sbkts_and_epts': 'СБКТС и ЭПТС',
-        'loading_and_unloading_and_temporary_storage': 'Погрузочно-разгрузочные работы и СВХ',
-        'ferry': 'Перегон',
-        'other_expenses': 'Прочие расходы',
+        'korea_dealer_commission': 'Комиссия дилера в Корее(RUB)',
+        'china_dealer_commission': 'Комиссия дилера в Китае(RUB)',
+        'china_documents_delivery_cny': 'Документы и доставка до границы (CNY)',
+        'logistics_kazan_usd': 'Логистика до Казани (USD)',
+        'logistics_kazan_rub': 'Подготовка авто в России(RUB)',
+        
+        'lab_svh_kazan_rub': 'Лаборатория и СВХ Казань(RUB)',
+        'lab_svh_not_kazan_rub': 'Лаборатория и СВХ не Казань(RUB)',
     }
 }
