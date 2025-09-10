@@ -12,7 +12,7 @@ from handlers.url_handlers import url_router
 from handlers.rates_handlers import rates_router
 from handlers.admin_handlers import admin_router
 from keyboards.set_menu import set_menu
-from middlewares.subscription_middleware import SubscriptionMiddleware
+
 
 async def main():
     config: Config = load_config()
@@ -30,7 +30,7 @@ async def main():
 
     await set_menu(bot)
 
-    dp.update.middleware(SubscriptionMiddleware())
+    
 
     dp.include_router(admin_router)
     dp.include_router(common_router)
