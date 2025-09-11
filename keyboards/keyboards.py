@@ -60,9 +60,6 @@ def create_volume_keyboard() -> InlineKeyboardMarkup:
 
 def create_after_calculation_keyboard(is_admin: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.row(
-        InlineKeyboardButton(text=LEXICON_RU['calculate_another_car'], callback_data='calculator')
-    )
     if is_admin:
         builder.row(
             InlineKeyboardButton(text=LEXICON_RU['detailed_calculation'], callback_data='detailed_calculation')
@@ -93,6 +90,17 @@ def create_kazan_question_keyboard() -> InlineKeyboardMarkup:
     )
     builder.row(
         InlineKeyboardButton(text=LEXICON_RU['back'], callback_data='back')
+    )
+    return builder.as_markup()
+
+def create_kazan_question_url_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text=LEXICON_RU['yes'], callback_data='kazan_yes'),
+        InlineKeyboardButton(text=LEXICON_RU['no'], callback_data='kazan_no')
+    )
+    builder.row(
+        InlineKeyboardButton(text=LEXICON_RU['exit'], callback_data='exit')
     )
     return builder.as_markup()
 
