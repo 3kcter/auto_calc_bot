@@ -44,7 +44,7 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
             return
 
         if error:
-            await message.answer("Не удалось извлечь все необходимые данные со страницы. Пожалуйста, попробуйте другую ссылку или воспользуйтесь обычным калькулятором.")
+            await message.answer(f"Не удалось извлечь все необходимые данные со страницы: {error}. Пожалуйста, попробуйте другую ссылку или воспользуйтесь обычным калькулятором.")
             for admin_id in config.bot.admin_ids:
                 await message.bot.send_message(admin_id, f"Ошибка парсинга URL: {url}\n{error}")
             return

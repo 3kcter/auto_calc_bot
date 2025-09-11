@@ -1,14 +1,17 @@
 import re
 import json
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.service import Service
+from selenium.common.exceptions import TimeoutException
+
+from services.driver_manager import safe_driver_execute
 
 def validate_and_normalize_url(url: str) -> tuple[str | None, str | None]:
+    """
+    Валидирует и нормализует URL, чтобы он соответствовал одному из поддерживаемых форматов.
+    Возвращает нормализованный URL или сообщение об ошибке.
+    """
     if 'encar.com' in url:
         match = re.search(r'encar\.com/cars/detail/(\d+)', url)
         if match:
@@ -22,6 +25,9 @@ def validate_and_normalize_url(url: str) -> tuple[str | None, str | None]:
     return None, "Пожалуйста, отправьте ссылку на сайт encar.com или che168.com"
 
 def parse_car_data(url: str, html_content: str) -> tuple[dict, str | None]:
+    """
+    Парсит данные об автомобиле с encar.com из предоставленного HTML-контента.
+    """
     data = {
         'year': None,
         'cost': None,
@@ -44,54 +50,67 @@ def parse_car_data(url: str, html_content: str) -> tuple[dict, str | None]:
                         data['currency'] = 'KRW'
                     data['volume'] = car_info.get('spec', {}).get('displacement')
             else:
-                error = "Could not find __PRELOADED_STATE__ in encar.com HTML"
+                error = "Не удалось найти данные о машине на encar.com."
         except (json.JSONDecodeError, AttributeError) as e:
-            error = f"Error parsing encar.com data: {e}"
+            error = f"Ошибка обработки данных с encar.com: {e}"
     
     return data, error
 
-def parse_che168_selenium(url: str) -> tuple[dict, str | None]:
-    data = {}
+@safe_driver_execute
+def parse_che168_selenium(driver, url: str) -> tuple[dict, str | None]:
+    """
+    Парсит данные об автомобиле с che168.com с использованием Selenium, извлекая данные из скрытых полей ввода.
+    """
+    data = {
+        'year': None,
+        'cost': None,
+        'currency': 'CNY',  # Валюта для che168.com всегда CNY
+        'volume': None,
+        'country': 'china',
+        'engine_type': None # Добавляем новое поле
+    }
     error = None
     
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    
     try:
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
         driver.get(url)
         
         wait = WebDriverWait(driver, 10)
-        wait.until(EC.presence_of_element_located((By.CLASS_NAME, "car-brand-name")))
-
-        title = driver.find_element(By.CLASS_NAME, "car-brand-name").text
-        price = driver.find_element(By.ID, "overlayPrice").text
         
-        # Extract year from a more reliable element if possible
-        year_element = driver.find_element(By.XPATH, "//li[contains(., '上牌时间')]/span[2]")
-        year = year_element.text.split('年')[0]
+        # Ожидаем появления элемента, который содержит данные
+        wait.until(EC.presence_of_element_located((By.ID, "car_price")))
 
-        # Extract volume
-        volume_element = driver.find_element(By.XPATH, "//li[contains(., '排量')]/span[2]")
-        volume_liters = volume_element.text.replace('L', '')
-        volume_cc = int(float(volume_liters) * 1000)
+        # Извлечение данных из скрытых полей ввода
+        price_str = driver.find_element(By.ID, "car_price").get_attribute("value")
+        year_str = driver.find_element(By.ID, "car_firstregtime").get_attribute("value")
+        car_name = driver.find_element(By.ID, "car_carname").get_attribute("value")
 
+        # Преобразование данных
+        try:
+            data['cost'] = int(float(price_str) * 10000) # Цена в юанях, переводим в копейки
+        except ValueError:
+            error = "Неверный формат цены."
 
-        data = {
-            'year': int(year),
-            'cost': int(float(price.replace('万','')) * 10000),
-            'currency': 'CNY',
-            'volume': volume_cc,
-            'country': 'china'
-        }
+        try:
+            # Год может быть в формате "YYYY/MM", берем только год
+            data['year'] = int(year_str.split('/')[0])
+        except ValueError:
+            error = "Неверный формат года."
+        
+        # Извлечение объема двигателя и определение типа двигателя
+        volume_match = re.search(r'(\d+\.?\d*)L', car_name)
+        if volume_match:
+            try:
+                volume_liters = float(volume_match.group(1))
+                data['volume'] = int(volume_liters * 1000) # Переводим литры в куб. см.
+                data['engine_type'] = "ДВС" # Устанавливаем тип двигателя как ДВС
+            except ValueError:
+                error = "Неверный формат объема двигателя."
+        else:
+            error = "Не удалось извлечь объем двигателя."
 
+    except TimeoutException:
+        error = "Время ожидания загрузки страницы истекло. Попробуйте еще раз."
     except Exception as e:
-        error = f"Error parsing che168.com with selenium: {e}"
-    finally:
-        if 'driver' in locals():
-            driver.quit()
+        error = f"Ошибка при парсинге che168.com: {e}"
             
     return data, error
