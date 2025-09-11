@@ -45,10 +45,6 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
         await message.answer(error)
         return
 
-    await message.answer(LEXICON_RU['processing_url'])
-
-    try:
-        await message.answer(LEXICON_RU['processing_url'])
     processing_message = await message.answer(LEXICON_RU['processing_url'])
 
     try:
@@ -72,8 +68,7 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
             await message.answer(f"Не удалось извлечь все необходимые данные со страницы: {error}. Пожалуйста, попробуйте другую ссылку или воспользуйтесь обычным калькулятором.")
             await processing_message.delete() # Delete processing message
             for admin_id in config.bot.admin_ids:
-                await message.bot.send_message(admin_id, f"Ошибка парсинга URL: {url}")
-{error}")
+                await message.bot.send_message(admin_id, f"Ошибка парсинга URL: {url}\n{error}")
             return
 
         if car_data and all(car_data.get(k) is not None for k in ['year', 'cost', 'volume']):
@@ -94,6 +89,4 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
         await message.answer(f"Произошла ошибка при обработке ссылки.")
         await processing_message.delete() # Delete processing message
         for admin_id in config.bot.admin_ids:
-            await message.bot.send_message(admin_id, f"Произошла ошибка при обработке ссылки: {url}
-{e}")
-
+            await message.bot.send_message(admin_id, f"Произошла ошибка при обработке ссылки: {url}\n{e}")
