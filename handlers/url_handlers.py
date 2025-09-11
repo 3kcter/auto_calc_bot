@@ -4,6 +4,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
 import aiohttp
 import asyncio
+import datetime
 
 from lexicon.lexicon import LEXICON_RU
 from services.parser import parse_car_data, validate_and_normalize_url, parse_che168_selenium
@@ -11,6 +12,17 @@ from config.config import load_config, Config
 from handlers.calculator_handlers import send_calculation_result, CalculatorFSM
 
 url_router = Router()
+
+def get_age_category(car_year: int) -> str:
+    current_year = datetime.datetime.now().year
+    age = current_year - car_year
+
+    if age < 3:
+        return "младше 3"
+    elif 3 <= age <= 5:
+        return "3-5"
+    else:
+        return "старше 5"
 
 @url_router.callback_query(F.data == 'calculate_by_url')
 async def process_calculate_by_url_press(callback: CallbackQuery, state: FSMContext):
@@ -50,6 +62,10 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
             return
 
         if car_data and all(car_data.get(k) is not None for k in ['year', 'cost', 'volume']):
+            # Apply age categorization if year is available from parser
+            if car_data.get('year') is not None:
+                car_data['age_category'] = get_age_category(car_data['year'])
+            
             await state.update_data(**car_data)
             await send_calculation_result(message, state, config)
         else:
@@ -59,3 +75,4 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
         await message.answer(f"Произошла ошибка при обработке ссылки.")
         for admin_id in config.bot.admin_ids:
             await message.bot.send_message(admin_id, f"Произошла ошибка при обработке ссылки: {url}\n{e}")
+

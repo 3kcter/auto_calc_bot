@@ -36,14 +36,14 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
     calc_config = load_calc_config()
     costs = await calculate_cost(data['year'], data['cost'], data['country'], data.get('volume', 0), calc_config, data['engine_type'], data.get('is_from_kazan'))
     
-    year_text = LEXICON_RU.get(data['year'], data['year'])
+    year_display_text = data.get('age_category', LEXICON_RU.get(data['year'], data['year']))
     engine_type_text = LEXICON_RU.get(data['engine_type'], data['engine_type'])
 
     currency_symbol = COUNTRY_CURRENCY_SYMBOL_MAP.get(data['country'], '')
 
     output_text = \
         f"{LEXICON_RU['calculation_params']}:\n" \
-        f"🔹 {LEXICON_RU['car_age']}: {year_text}\n" \
+        f"🔹 {LEXICON_RU['car_age']}: {year_display_text}\n" \
         f"🔹 {LEXICON_RU['engine_type_label']}: {engine_type_text}\n" \
         f"🔹 {LEXICON_RU['car_cost']}: {data['cost']:,} {currency_symbol}\n" \
         f"🔹 {LEXICON_RU['engine_volume']}: {data.get('volume', 0)} куб. см.\n\n" \
@@ -73,7 +73,7 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
     costs = await calculate_cost(data['year'], data['cost'], data['country'], data.get('volume', 0), calc_config, data['engine_type'], data.get('is_from_kazan'))
 
     detailed_output_text = f"{LEXICON_RU['calculation_params']}:\n"
-    detailed_output_text += f"🔹 {LEXICON_RU['car_age']}: {LEXICON_RU.get(data['year'], data['year'])}\n"
+    detailed_output_text += f"🔹 {LEXICON_RU['car_age']}: {data.get('age_category', LEXICON_RU.get(data['year'], data['year']))}\n"
     detailed_output_text += f"🔹 {LEXICON_RU['engine_type_label']}: {LEXICON_RU.get(data['engine_type'], data['engine_type'])}\n"
     detailed_output_text += f"🔹 {LEXICON_RU['car_cost']}: {data['cost']:,} {COUNTRY_CURRENCY_SYMBOL_MAP.get(data['country'], '')}\n"
     detailed_output_text += f"🔹 {LEXICON_RU['engine_volume']}: {data.get('volume', 0)} куб. см.\n\n"
