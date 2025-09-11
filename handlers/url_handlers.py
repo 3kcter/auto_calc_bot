@@ -48,6 +48,10 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
     await message.answer(LEXICON_RU['processing_url'])
 
     try:
+        await message.answer(LEXICON_RU['processing_url'])
+    processing_message = await message.answer(LEXICON_RU['processing_url'])
+
+    try:
         if 'encar.com' in url:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as response:
@@ -61,12 +65,15 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
             car_data, error = await asyncio.to_thread(parse_che168_selenium, url)
         else:
             await message.answer("Пожалуйста, отправьте ссылку на сайт encar.com или che168.com")
+            await processing_message.delete() # Delete processing message
             return
 
         if error:
             await message.answer(f"Не удалось извлечь все необходимые данные со страницы: {error}. Пожалуйста, попробуйте другую ссылку или воспользуйтесь обычным калькулятором.")
+            await processing_message.delete() # Delete processing message
             for admin_id in config.bot.admin_ids:
-                await message.bot.send_message(admin_id, f"Ошибка парсинга URL: {url}\n{error}")
+                await message.bot.send_message(admin_id, f"Ошибка парсинга URL: {url}")
+{error}")
             return
 
         if car_data and all(car_data.get(k) is not None for k in ['year', 'cost', 'volume']):
@@ -78,11 +85,15 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
             
             await state.update_data(**car_data)
             await send_calculation_result(message, state, config)
+            await processing_message.delete() # Delete processing message
         else:
             await message.answer("Не удалось извлечь все необходимые данные со страницы. Пожалуйста, попробуйте другую ссылку или воспользуйтесь обычным калькулятором.")
+            await processing_message.delete() # Delete processing message
 
     except Exception as e:
         await message.answer(f"Произошла ошибка при обработке ссылки.")
+        await processing_message.delete() # Delete processing message
         for admin_id in config.bot.admin_ids:
-            await message.bot.send_message(admin_id, f"Произошла ошибка при обработке ссылки: {url}\n{e}")
+            await message.bot.send_message(admin_id, f"Произошла ошибка при обработке ссылки: {url}
+{e}")
 
