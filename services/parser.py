@@ -3,7 +3,7 @@ import json
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 from services.driver_manager import safe_driver_execute
 
@@ -67,7 +67,7 @@ def parse_che168_selenium(driver, url: str) -> tuple[dict, str | None]:
         'currency': 'CNY',  # Валюта для che168.com всегда CNY
         'volume': None,
         'country': 'china',
-        'engine_type': None # Добавляем новое поле
+        'engine_type': None 
     }
     error = None
     
@@ -96,21 +96,44 @@ def parse_che168_selenium(driver, url: str) -> tuple[dict, str | None]:
         except ValueError:
             error = "Неверный формат года."
         
-        # Извлечение объема двигателя и определение типа двигателя
-        volume_match = re.search(r'(\d+\.?\d*)L', car_name)
-        if volume_match:
+        # Проверка на электромобиль
+        if "纯电动" in car_name or "纯电动" in driver.page_source: # "纯电动" means pure electric
+            data['engine_type'] = "Электро"
+            # Для электромобилей объем двигателя не указывается, но может быть емкость батареи
+            # Попробуем найти емкость батареи (например, 75kWh)
             try:
-                volume_liters = float(volume_match.group(1))
-                data['volume'] = int(volume_liters * 1000) # Переводим литры в куб. см.
-                data['engine_type'] = "ДВС" # Устанавливаем тип двигателя как ДВС
+                battery_capacity_element = driver.find_element(By.XPATH, "//li[span[contains(text(), '电池容量')]]/text()[2]")
+                battery_capacity_str = battery_capacity_element.text.strip()
+                # Извлекаем числовое значение, например, из "75kWh"
+                capacity_match = re.search(r'(\d+\.?\d*)', battery_capacity_str)
+                if capacity_match:
+                    data['volume'] = int(float(capacity_match.group(1)) * 1000) # Переводим kWh в Wh для объема
+                else:
+                    data['volume'] = 0 # Если не удалось извлечь, ставим 0
+            except NoSuchElementException:
+                data['volume'] = 0 # Если элемент не найден, ставим 0
             except ValueError:
-                error = "Неверный формат объема двигателя."
+                error = "Неверный формат емкости батареи."
         else:
-            error = "Не удалось извлечь объем двигателя."
+            # Извлечение объема двигателя и определение типа двигателя для ДВС
+            volume_match = re.search(r'(\d+\.?\d*)L', car_name)
+            if volume_match:
+                try:
+                    volume_liters = float(volume_match.group(1))
+                    data['volume'] = int(volume_liters * 1000) # Переводим литры в куб. см.
+                    data['engine_type'] = "ДВС" 
+                except ValueError:
+                    error = "Неверный формат объема двигателя."
+            else:
+                error = "Не удалось извлечь объем двигателя или определить тип двигателя."
 
     except TimeoutException:
         error = "Время ожидания загрузки страницы истекло. Попробуйте еще раз."
+    except NoSuchElementException as e:
+        error = f"Не найден элемент на странице: {e}. Возможно, изменилась структура сайта."
     except Exception as e:
-        error = f"Ошибка при парсинге che168.com: {e}"
+        error = f"Произошла непредвиденная ошибка при парсинге che168.com: {e}"
             
     return data, error
+
+    
