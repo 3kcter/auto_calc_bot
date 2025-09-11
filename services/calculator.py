@@ -19,12 +19,6 @@ CUSTOMS_PAYMENTS_RATES = {
             (1000, 3.0), (1500, 3.2), (1800, 3.5), (2300, 4.8),
             (3000, 5.0), (float('inf'), 5.7)
         ]
-    },
-    'more_than_7': {
-        'by_volume': [
-            (1000, 3.0), (1500, 3.2), (1800, 3.5), (2500, 4.8),
-            (3000, 5.0), (float('inf'), 5.7)
-        ]
     }
 }
 
@@ -38,7 +32,8 @@ RECYCLING_FEE_RATES = {
 
 CUSTOMS_CLEARANCE_FEES = [
     (200000, 1067), (450000, 2134), (1200000, 4269), (2700000, 11746),
-    (4200000, 16524), (5500000, 21344), (7000000, 27540), (float('inf'), 30000)
+    (4200000, 16524), (5500000, 21344), (7000000, 27540), (8000000, 30000),
+    (9000000, 30000), (10000000, 30000), (float('inf'), 30000)
 ]
 
 def _get_rate_from_table(value, table):
@@ -46,6 +41,12 @@ def _get_rate_from_table(value, table):
         if value <= limit:
             return rate
     return table[-1][1]
+
+def _get_row_from_table(value, table):
+    for row in table:
+        if value <= row[0]:
+            return row
+    return table[-1]
 
 def _calculate_customs_payments(age, cost_eur, volume, engine_type):
     if engine_type == 'electro':
@@ -58,19 +59,20 @@ def _calculate_customs_payments(age, cost_eur, volume, engine_type):
         age_category = '3_to_5'
     elif age == 'year_more_5':
         age_category = '5_to_7'
-    else:
-        age_category = 'more_than_7'
 
     rates = CUSTOMS_PAYMENTS_RATES.get(age_category, {})
     
+    if not rates:
+        return 0
+
     if 'by_cost' in rates:
-        for limit, rate_percent, rate_eur in rates['by_cost']:
-            if cost_eur < limit:
-                return max(cost_eur * rate_percent, rate_eur * volume)
+        # For cars up to 3 years old, the calculation is per euro of cost or per cm3 of volume
+        rate_info = _get_row_from_table(cost_eur, rates['by_cost'])
+        return min(cost_eur * rate_info[1], rate_info[2] * volume)
+
     elif 'by_volume' in rates:
-        for limit, rate_eur in rates['by_volume']:
-            if volume <= limit:
-                return rate_eur * volume
+        rate_eur = _get_rate_from_table(volume, rates['by_volume'])
+        return rate_eur * volume
     return 0
 
 def _calculate_recycling_fee(age, volume, engine_type):
