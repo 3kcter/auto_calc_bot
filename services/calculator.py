@@ -125,7 +125,6 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
     if country == 'china':
         china_documents_delivery = calc_config.china_documents_delivery_cny * cny_rate
         
-    if country in ['china', 'korea']:
         logistics_cost = calc_config.logistics_kazan_usd * usd_rate + calc_config.logistics_kazan_rub
         if is_from_kazan == 'no':
             logistics_cost += 40000

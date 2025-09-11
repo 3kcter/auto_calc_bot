@@ -206,35 +206,28 @@ async def process_country_sent(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 @calculator_router.callback_query(StateFilter(CalculatorFSM.is_from_kazan))
-async def process_kazan_question_answer(callback: CallbackQuery, state: FSMContext, config: Config):
+async def process_kazan_question_answer(callback: CallbackQuery, state: FSMContext):
     answer = callback.data.removeprefix('kazan_')
     await state.update_data(is_from_kazan=answer)
     data = await state.get_data()
     prompt_message_id = data.get('prompt_message_id')
     
-    # Check if the Kazan question came from a URL-based calculation
-    if data.get('url'):
-        await send_calculation_result(callback.message, state, config)
-        await state.clear() # Clear the state completely
-        await callback.answer() # Acknowledge the callback
-        return # Exit the function
+    currency_text = COUNTRY_CURRENCY_MAP.get(data['country'], '')
+    
+    if prompt_message_id:
+        await callback.message.bot.edit_message_text(
+            text=f"{LEXICON_RU['enter_cost']} {currency_text}",
+            chat_id=callback.message.chat.id,
+            message_id=prompt_message_id,
+            reply_markup=create_cost_keyboard()
+        )
     else:
-        currency_text = COUNTRY_CURRENCY_MAP.get(data['country'], '')
-        
-        if prompt_message_id:
-            await callback.message.bot.edit_message_text(
-                text=f"{LEXICON_RU['enter_cost']} {currency_text}",
-                chat_id=callback.message.chat.id,
-                message_id=prompt_message_id,
-                reply_markup=create_cost_keyboard()
-            )
-        else:
-            await callback.message.answer(
-                text=f"{LEXICON_RU['enter_cost']} {currency_text}",
-                reply_markup=create_cost_keyboard()
-            )
-        await callback.answer()
-        await state.set_state(CalculatorFSM.cost)
+        await callback.message.answer(
+            text=f"{LEXICON_RU['enter_cost']} {currency_text}",
+            reply_markup=create_cost_keyboard()
+        )
+    await callback.answer()
+    await state.set_state(CalculatorFSM.cost)
 
 @calculator_router.message(StateFilter(CalculatorFSM.cost), F.text)
 async def process_cost_sent(message: Message, state: FSMContext, config: Config):
