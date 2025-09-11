@@ -1,5 +1,6 @@
 .env
 задача.txt
+calc_config.json
 
 .venv/
 .vscode/

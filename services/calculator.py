@@ -51,12 +51,12 @@ def _calculate_customs_payments(age, cost_eur, volume, engine_type):
     if engine_type == 'electro':
         return cost_eur * 0.15
 
-    age_category = 'older'
-    if age == 'up_to_3':
+    age_category = ''
+    if age == 'year_less_3':
         age_category = 'up_to_3'
-    elif age == '3_to_5':
+    elif age == 'year_3_5':
         age_category = '3_to_5'
-    elif age == '5_to_7':
+    elif age == 'year_more_5':
         age_category = '5_to_7'
     else:
         age_category = 'more_than_7'
@@ -75,8 +75,11 @@ def _calculate_customs_payments(age, cost_eur, volume, engine_type):
 
 def _calculate_recycling_fee(age, volume, engine_type):
     fee_category = 'electric_hybrid' if engine_type == 'electro' else 'ice'
-    age_category = 'up_to_3' if age == 'up_to_3' else 'older'
     
+    age_category = 'older'
+    if age == 'year_less_3':
+        age_category = 'up_to_3'
+
     rates = RECYCLING_FEE_RATES[fee_category]
     
     if fee_category == 'electric_hybrid':
