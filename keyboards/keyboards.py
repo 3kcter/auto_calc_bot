@@ -60,9 +60,7 @@ def create_volume_keyboard() -> InlineKeyboardMarkup:
 
 def create_after_calculation_keyboard(is_admin: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.row(
-        InlineKeyboardButton(text=LEXICON_RU['calculate_another_car'], callback_data='calculator')
-    )
+    
     if is_admin:
         builder.row(
             InlineKeyboardButton(text=LEXICON_RU['detailed_calculation'], callback_data='detailed_calculation')

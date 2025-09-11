@@ -141,9 +141,9 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
     )
 
     vat = 0
-    if engine_type == 'electro':
-        vat = (cost_rub + customs_payments) * 0.20
-        total_cost_rub += vat
+    # if engine_type == 'electro':
+    #     vat = (cost_rub + customs_payments) * 0.20
+    #     total_cost_rub += vat
 
     # Convert total_cost_rub back to original currency
     rate_to_original_currency = rates.get(currency, 1.0)
