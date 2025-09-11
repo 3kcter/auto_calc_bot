@@ -98,7 +98,7 @@ def parse_che168_selenium(driver, url: str) -> tuple[dict, str | None]:
         
         # Проверка на электромобиль
         if "纯电动" in car_name or "纯电动" in driver.page_source: # "纯电动" means pure electric
-            data['engine_type'] = "Электро"
+            data['engine_type'] = "electro"
             # Для электромобилей объем двигателя не указывается, но может быть емкость батареи
             # Попробуем найти емкость батареи (например, 75kWh)
             try:
