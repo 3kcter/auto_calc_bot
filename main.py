@@ -1,6 +1,8 @@
 import asyncio
 import logging
 
+import os
+
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -38,7 +40,10 @@ async def main():
     dp.include_router(admin_router)
     dp.include_router(common_router)
     dp.include_router(calculator_router)
-    dp.include_router(url_router)
+    
+    if os.getenv('ENABLE_PARSER', 'False').lower() == 'true':
+        dp.include_router(url_router)
+    
     dp.include_router(rates_router)
 
     await bot.delete_webhook(drop_pending_updates=True)
