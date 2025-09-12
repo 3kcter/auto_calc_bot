@@ -56,21 +56,3 @@ async def process_start_callback(callback: CallbackQuery, state: FSMContext, bot
         )
     await callback.answer()
 
-@common_router.callback_query(F.data == '/start')
-async def process_start_callback(callback: CallbackQuery, state: FSMContext, bot: Bot, config: Config):
-    user_id = callback.from_user.id
-    is_admin = user_id in config.bot.admin_ids
-    is_member = False
-    if not is_admin:
-        member = await bot.get_chat_member(chat_id=config.bot.channel_id, user_id=user_id)
-        is_member = member.status in [ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]
-
-    if is_admin or is_member:
-        await send_start_menu(callback.message, state)
-    else:
-        await callback.message.answer(
-            text=LEXICON_RU['subscription_required'],
-            reply_markup=channel_keyboard
-        )
-    await callback.answer()
-

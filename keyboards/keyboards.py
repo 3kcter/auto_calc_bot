@@ -3,6 +3,8 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from lexicon.lexicon import LEXICON_RU
 from config.config import Config, load_config
 
+import os
+
 config: Config = load_config()
 
 def create_main_menu_keyboard() -> InlineKeyboardMarkup:
@@ -11,9 +13,10 @@ def create_main_menu_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text=LEXICON_RU['calculator'], callback_data='calculator'),
         InlineKeyboardButton(text=LEXICON_RU['exchange_rates'], callback_data='exchange_rates')
     )
-    # builder.row(
-    #     InlineKeyboardButton(text=LEXICON_RU['calculate_by_url'], callback_data='calculate_by_url')
-    # )
+    if os.getenv('ENABLE_PARSER', 'False').lower() == 'true':
+        builder.row(
+            InlineKeyboardButton(text=LEXICON_RU['calculate_by_url'], callback_data='calculate_by_url')
+        )
     return builder.as_markup()
 
 
