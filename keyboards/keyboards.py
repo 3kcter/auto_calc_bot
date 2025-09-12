@@ -70,9 +70,6 @@ def create_after_calculation_keyboard(is_admin: bool = False) -> InlineKeyboardM
         builder.row(
             InlineKeyboardButton(text=LEXICON_RU['detailed_calculation'], callback_data='detailed_calculation')
         )
-    builder.row(
-        InlineKeyboardButton(text=LEXICON_RU['exit'], callback_data='exit')
-    )
     return builder.as_markup()
 
 
