@@ -1,4 +1,5 @@
 from aiogram import F, Router
+from aiogram.exceptions import TelegramAPIError
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
@@ -123,47 +124,32 @@ async def process_calculator_press(callback: CallbackQuery, state: FSMContext):
 @calculator_router.callback_query(F.data == 'back')
 async def process_back_press(callback: CallbackQuery, state: FSMContext):
     current_state = await state.get_state()
+    data = await state.get_data()
+
     if current_state == CalculatorFSM.year:
         await callback.message.delete()
         await send_start_menu(callback.message, state)
     elif current_state == CalculatorFSM.engine_type:
-        await callback.message.edit_text(
-            text=LEXICON_RU['select_year'],
-            reply_markup=create_year_keyboard()
-        )
+        await callback.message.edit_text(text=LEXICON_RU['select_year'], reply_markup=create_year_keyboard())
         await state.set_state(CalculatorFSM.year)
     elif current_state == CalculatorFSM.country:
-        await callback.message.edit_text(
-            text=f"{LEXICON_RU['select_engine_type']}\n\n{LEXICON_RU['hybrid_info']}",
-            reply_markup=create_engine_type_keyboard()
-        )
+        await callback.message.edit_text(text=f"{LEXICON_RU['select_engine_type']}\n\n{LEXICON_RU['hybrid_info']}", reply_markup=create_engine_type_keyboard())
         await state.set_state(CalculatorFSM.engine_type)
-    elif current_state == CalculatorFSM.is_from_kazan:
-        await callback.message.edit_text(
-            text=LEXICON_RU['select_country'],
-            reply_markup=create_country_keyboard()
-        )
+    elif current_state == CalculatorFSM.volume:
+        await callback.message.edit_text(text=LEXICON_RU['select_country'], reply_markup=create_country_keyboard())
         await state.set_state(CalculatorFSM.country)
     elif current_state == CalculatorFSM.cost:
-        data = await state.get_data()
-        if data.get('country') == 'china':
-            await callback.message.edit_text(
-                text=LEXICON_RU['is_from_kazan_question'],
-                reply_markup=create_kazan_question_keyboard()
-            )
-            await state.set_state(CalculatorFSM.is_from_kazan)
-        else:
-            await callback.message.edit_text(
-                text=LEXICON_RU['select_country'],
-                reply_markup=create_country_keyboard()
-            )
+        if data.get('engine_type') == 'electro':
+            await callback.message.edit_text(text=LEXICON_RU['select_country'], reply_markup=create_country_keyboard())
             await state.set_state(CalculatorFSM.country)
-    elif current_state == CalculatorFSM.volume:
-        await callback.message.edit_text(
-            text=LEXICON_RU['enter_cost'],
-            reply_markup=create_cost_keyboard()
-        )
+        else:
+            await callback.message.edit_text(text=LEXICON_RU['select_volume'], reply_markup=create_volume_keyboard())
+            await state.set_state(CalculatorFSM.volume)
+    elif current_state == CalculatorFSM.is_from_kazan:
+        currency_text = COUNTRY_CURRENCY_MAP.get(data['country'], '')
+        await callback.message.edit_text(text=f"{LEXICON_RU['enter_cost']} {currency_text}", reply_markup=create_cost_keyboard())
         await state.set_state(CalculatorFSM.cost)
+
     await callback.answer()
 
 @calculator_router.callback_query(StateFilter(CalculatorFSM.year))
@@ -195,15 +181,24 @@ COUNTRY_CURRENCY_MAP = {
 async def process_country_sent(callback: CallbackQuery, state: FSMContext):
     country = callback.data
     await state.update_data(country=country)
+    data = await state.get_data()
+
+    if data['engine_type'] == 'electro':
+        currency_text = COUNTRY_CURRENCY_MAP.get(country, '')
+        await callback.message.edit_text(
+            text=f"{LEXICON_RU['enter_cost']} {currency_text}",
+            reply_markup=create_cost_keyboard()
+        )
+        await state.update_data(prompt_message_id=callback.message.message_id)
+        await state.set_state(CalculatorFSM.cost)
+    else:
+        await callback.message.edit_text(
+            text=LEXICON_RU['select_volume'],
+            reply_markup=create_volume_keyboard()
+        )
+        await state.update_data(prompt_message_id=callback.message.message_id)
+        await state.set_state(CalculatorFSM.volume)
     
-    currency_text = COUNTRY_CURRENCY_MAP.get(country, '')
-    
-    await callback.message.edit_text(
-        text=f"{LEXICON_RU['enter_cost']} {currency_text}",
-        reply_markup=create_cost_keyboard()
-    )
-    await state.update_data(prompt_message_id=callback.message.message_id)
-    await state.set_state(CalculatorFSM.cost)
     await callback.answer()
 
 @calculator_router.callback_query(StateFilter(CalculatorFSM.is_from_kazan))
@@ -212,27 +207,17 @@ async def process_kazan_question_answer(callback: CallbackQuery, state: FSMConte
     await state.update_data(is_from_kazan=answer)
     data = await state.get_data()
     prompt_message_id = data.get('prompt_message_id')
-    
-    # Logic from process_cost_sent
+
     if data['engine_type'] == 'electro':
         await state.update_data(volume=0)
-        if prompt_message_id:
+
+    if prompt_message_id:
+        try:
             await callback.message.bot.delete_message(chat_id=callback.message.chat.id, message_id=prompt_message_id)
-        await send_calculation_result(callback, state, config)
-    else:
-        if prompt_message_id:
-            await callback.message.bot.edit_message_text(
-                text=LEXICON_RU['select_volume'],
-                chat_id=callback.message.chat.id,
-                message_id=prompt_message_id,
-                reply_markup=create_volume_keyboard()
-            )
-        else:
-             await callback.message.answer(
-                text=LEXICON_RU['select_volume'],
-                reply_markup=create_volume_keyboard()
-            )
-        await state.set_state(CalculatorFSM.volume)
+        except TelegramAPIError: # message might be already deleted
+            pass
+            
+    await send_calculation_result(callback, state, config)
     await callback.answer()
 
 @calculator_router.message(StateFilter(CalculatorFSM.cost), F.text)
@@ -246,7 +231,6 @@ async def process_cost_sent(message: Message, state: FSMContext, config: Config)
         await state.update_data(cost=int(cost_text))
         data = await state.get_data() # Re-get data to include updated cost
 
-        # Always ask Kazan question after cost
         if prompt_message_id:
             await message.bot.edit_message_text(
                 text=LEXICON_RU['is_from_kazan_question'],
@@ -255,10 +239,12 @@ async def process_cost_sent(message: Message, state: FSMContext, config: Config)
                 reply_markup=create_kazan_question_keyboard()
             )
         else:
-            await message.answer(
+            sent_message = await message.answer(
                 text=LEXICON_RU['is_from_kazan_question'],
                 reply_markup=create_kazan_question_keyboard()
             )
+            await state.update_data(prompt_message_id=sent_message.message_id)
+
         await state.set_state(CalculatorFSM.is_from_kazan)
     else:
         if prompt_message_id:
@@ -272,14 +258,39 @@ async def process_cost_sent(message: Message, state: FSMContext, config: Config)
             await message.answer(text=LEXICON_RU['not_a_number'])
 
 @calculator_router.message(StateFilter(CalculatorFSM.volume), F.text)
-async def process_volume_sent(message: Message, state: FSMContext, config: Config):
+async def process_volume_sent(message: Message, state: FSMContext):
+    await message.delete()
+    data = await state.get_data()
+    prompt_message_id = data.get('prompt_message_id')
+
     if message.text.isdigit():
         await state.update_data(volume=int(message.text))
-        data = await state.get_data()
-        prompt_message_id = data.get('prompt_message_id')
+        data = await state.get_data() # re-get data
+        
+        currency_text = COUNTRY_CURRENCY_MAP.get(data['country'], '')
+        
         if prompt_message_id:
-            await message.bot.delete_message(chat_id=message.chat.id, message_id=prompt_message_id)
-        await message.delete()
-        await send_calculation_result(message, state, config)
+            await message.bot.edit_message_text(
+                text=f"{LEXICON_RU['enter_cost']} {currency_text}",
+                chat_id=message.chat.id,
+                message_id=prompt_message_id,
+                reply_markup=create_cost_keyboard()
+            )
+        else:
+            sent_message = await message.answer(
+                text=f"{LEXICON_RU['enter_cost']} {currency_text}",
+                reply_markup=create_cost_keyboard()
+            )
+            await state.update_data(prompt_message_id=sent_message.message_id)
+
+        await state.set_state(CalculatorFSM.cost)
     else:
-        await message.answer(text=LEXICON_RU['not_a_number'])
+        if prompt_message_id:
+            await message.bot.edit_message_text(
+                text=LEXICON_RU['not_a_number'],
+                chat_id=message.chat.id,
+                message_id=prompt_message_id,
+                reply_markup=create_volume_keyboard()
+            )
+        else:
+            await message.answer(text=LEXICON_RU['not_a_number'])
