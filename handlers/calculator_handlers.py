@@ -55,9 +55,14 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
 
     output_text += f"\n\n{LEXICON_RU['total_cost']}: {round(costs['total_cost']):,} {currency_symbol} ({round(costs['total_cost_rub']):,} руб.)"
 
-    target_message = message_or_callback if isinstance(message_or_callback, Message) else message_or_callback.message
+    if isinstance(message_or_callback, Message):
+        target_message = message_or_callback
+        user_id = target_message.from_user.id
+    else: # it's a CallbackQuery
+        target_message = message_or_callback.message
+        user_id = message_or_callback.from_user.id
 
-    is_admin = target_message.from_user.id in config.bot.admin_ids
+    is_admin = user_id in config.bot.admin_ids
 
     await target_message.answer(
         text=output_text,
@@ -80,7 +85,11 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
     else:
         detailed_output_text += "\n" # Add a newline if engine volume is not displayed, to maintain spacing
 
-    detailed_output_text += f"🔸 {LEXICON_RU['customs_payments']}: {round(costs['customs_payments']):,} руб.\n"
+    if data['engine_type'] == 'electro':
+        detailed_output_text += f"🔸 {LEXICON_RU['customs_payments']} (15%): {round(costs['customs_payments']):,} руб.\n"
+    else:
+        detailed_output_text += f"🔸 {LEXICON_RU['customs_payments']}: {round(costs['customs_payments']):,} руб.\n"
+
     detailed_output_text += f"🔸 {LEXICON_RU['customs_clearance']}: {round(costs['customs_clearance']):,} руб.\n"
     detailed_output_text += f"🔸 {LEXICON_RU['recycling_fee']}: {costs['recycling_fee']:,} руб.\n"
 
@@ -99,6 +108,7 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
 
     await callback.message.answer(text=detailed_output_text)
     await callback.answer()
+
 
 @calculator_router.callback_query(F.data == 'calculator')
 async def process_calculator_press(callback: CallbackQuery, state: FSMContext):
@@ -208,7 +218,7 @@ async def process_kazan_question_answer(callback: CallbackQuery, state: FSMConte
         await state.update_data(volume=0)
         if prompt_message_id:
             await callback.message.bot.delete_message(chat_id=callback.message.chat.id, message_id=prompt_message_id)
-        await send_calculation_result(callback.message, state, config)
+        await send_calculation_result(callback, state, config)
     else:
         if prompt_message_id:
             await callback.message.bot.edit_message_text(
