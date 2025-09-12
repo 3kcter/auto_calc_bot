@@ -12,6 +12,7 @@ from handlers.url_handlers import url_router
 from handlers.rates_handlers import rates_router
 from handlers.admin_handlers import admin_router
 from keyboards.set_menu import set_menu
+from middlewares.subscription_middleware import SubscriptionMiddleware
 
 
 async def main():
@@ -27,6 +28,8 @@ async def main():
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
     dp = Dispatcher(config=config)
+    dp.message.middleware(SubscriptionMiddleware())
+    dp.callback_query.middleware(SubscriptionMiddleware())
 
     await set_menu(bot)
 
