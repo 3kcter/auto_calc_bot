@@ -189,47 +189,44 @@ async def process_country_sent(callback: CallbackQuery, state: FSMContext):
     await state.update_data(country=country)
     await callback.message.delete()
     
-    if country == 'china':
-        sent_message = await callback.message.answer(
-            text=LEXICON_RU['is_from_kazan_question'],
-            reply_markup=create_kazan_question_keyboard()
-        )
-        await state.update_data(prompt_message_id=sent_message.message_id)
-        await state.set_state(CalculatorFSM.is_from_kazan)
-    else:
-        currency_text = COUNTRY_CURRENCY_MAP.get(country, '')
-        
-        sent_message = await callback.message.answer(
-            text=f"{LEXICON_RU['enter_cost']} {currency_text}",
-            reply_markup=create_cost_keyboard()
-        )
-        await state.update_data(prompt_message_id=sent_message.message_id)
-        await state.set_state(CalculatorFSM.cost)
+    currency_text = COUNTRY_CURRENCY_MAP.get(country, '')
+    
+    sent_message = await callback.message.answer(
+        text=f"{LEXICON_RU['enter_cost']} {currency_text}",
+        reply_markup=create_cost_keyboard()
+    )
+    await state.update_data(prompt_message_id=sent_message.message_id)
+    await state.set_state(CalculatorFSM.cost)
     await callback.answer()
 
 @calculator_router.callback_query(StateFilter(CalculatorFSM.is_from_kazan))
-async def process_kazan_question_answer(callback: CallbackQuery, state: FSMContext):
+async def process_kazan_question_answer(callback: CallbackQuery, state: FSMContext, config: Config):
     answer = callback.data.removeprefix('kazan_')
     await state.update_data(is_from_kazan=answer)
     data = await state.get_data()
     prompt_message_id = data.get('prompt_message_id')
     
-    currency_text = COUNTRY_CURRENCY_MAP.get(data['country'], '')
-    
-    if prompt_message_id:
-        await callback.message.bot.edit_message_text(
-            text=f"{LEXICON_RU['enter_cost']} {currency_text}",
-            chat_id=callback.message.chat.id,
-            message_id=prompt_message_id,
-            reply_markup=create_cost_keyboard()
-        )
+    # Logic from process_cost_sent
+    if data['engine_type'] == 'electro':
+        await state.update_data(volume=0)
+        if prompt_message_id:
+            await callback.message.bot.delete_message(chat_id=callback.message.chat.id, message_id=prompt_message_id)
+        await send_calculation_result(callback.message, state, config)
     else:
-        await callback.message.answer(
-            text=f"{LEXICON_RU['enter_cost']} {currency_text}",
-            reply_markup=create_cost_keyboard()
-        )
+        if prompt_message_id:
+            await callback.message.bot.edit_message_text(
+                text=LEXICON_RU['select_volume'],
+                chat_id=callback.message.chat.id,
+                message_id=prompt_message_id,
+                reply_markup=create_volume_keyboard()
+            )
+        else:
+             await callback.message.answer(
+                text=LEXICON_RU['select_volume'],
+                reply_markup=create_volume_keyboard()
+            )
+        await state.set_state(CalculatorFSM.volume)
     await callback.answer()
-    await state.set_state(CalculatorFSM.cost)
 
 @calculator_router.message(StateFilter(CalculatorFSM.cost), F.text)
 async def process_cost_sent(message: Message, state: FSMContext, config: Config):
@@ -240,27 +237,22 @@ async def process_cost_sent(message: Message, state: FSMContext, config: Config)
     cost_text = message.text.replace(' ', '').replace(',', '')
     if cost_text.isdigit():
         await state.update_data(cost=int(cost_text))
-        data = await state.get_data()
-        
-        if data['engine_type'] == 'electro':
-            await state.update_data(volume=0)
-            if prompt_message_id:
-                await message.bot.delete_message(chat_id=message.chat.id, message_id=prompt_message_id)
-            await send_calculation_result(message, state, config)
+        data = await state.get_data() # Re-get data to include updated cost
+
+        # Always ask Kazan question after cost
+        if prompt_message_id:
+            await message.bot.edit_message_text(
+                text=LEXICON_RU['is_from_kazan_question'],
+                chat_id=message.chat.id,
+                message_id=prompt_message_id,
+                reply_markup=create_kazan_question_keyboard()
+            )
         else:
-            if prompt_message_id:
-                await message.bot.edit_message_text(
-                    text=LEXICON_RU['select_volume'],
-                    chat_id=message.chat.id,
-                    message_id=prompt_message_id,
-                    reply_markup=create_volume_keyboard()
-                )
-            else:
-                 await message.answer(
-                    text=LEXICON_RU['select_volume'],
-                    reply_markup=create_volume_keyboard()
-                )
-            await state.set_state(CalculatorFSM.volume)
+            await message.answer(
+                text=LEXICON_RU['is_from_kazan_question'],
+                reply_markup=create_kazan_question_keyboard()
+            )
+        await state.set_state(CalculatorFSM.is_from_kazan)
     else:
         if prompt_message_id:
             await message.bot.edit_message_text(
