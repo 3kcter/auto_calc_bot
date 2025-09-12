@@ -3,6 +3,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 import threading
 import os
+import logging
 
 _driver = None
 _lock = threading.Lock()
@@ -36,10 +37,10 @@ def initialize_driver(chrome_driver_path=None):
                 _driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
                 
                 _driver_initialized = True
-                print("Драйвер успешно инициализирован")
+                logging.info("Драйвер успешно инициализирован")
                 
             except Exception as e:
-                print(f"Ошибка инициализации драйвера: {e}")
+                logging.error(f"Ошибка инициализации драйвера: {e}")
                 _driver_initialized = False
                 raise
 
@@ -78,7 +79,7 @@ def quit_driver():
             try:
                 _driver.quit()
             except Exception as e:
-                print(f"Ошибка при закрытии драйвера: {e}")
+                logging.error(f"Ошибка при закрытии драйвера: {e}")
             finally:
                 _driver = None
                 _driver_initialized = False
@@ -92,7 +93,7 @@ def safe_driver_execute(func):
             driver = get_driver()
             return func(driver, *args, **kwargs)
         except Exception as e:
-            print(f"Ошибка при работе с драйвером: {e}")
+            logging.error(f"Ошибка при работе с драйвером: {e}")
             # Можно добавить логику перезапуска драйвера при ошибках
             restart_driver()
             raise
@@ -113,6 +114,6 @@ if __name__ == "__main__":
     try:
         initialize_driver(driver_path)
         title = example_usage()
-        print(f"Заголовок страницы: {title}")
+        logging.info(f"Заголовок страницы: {title}")
     finally:
         quit_driver()

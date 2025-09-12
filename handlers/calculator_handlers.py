@@ -12,7 +12,7 @@ from keyboards.keyboards import (
 )
 from services.calculator import calculate_cost
 from services.menu_utils import send_start_menu
-from config.config import load_calc_config, Config
+from config.config import load_calc_config_async, Config
 
 calculator_router = Router()
 
@@ -33,7 +33,7 @@ COUNTRY_CURRENCY_SYMBOL_MAP = {
 
 async def send_calculation_result(message_or_callback, state: FSMContext, config: Config):
     data = await state.get_data()
-    calc_config = load_calc_config()
+    calc_config = await load_calc_config_async()
     costs = await calculate_cost(data['year'], data['cost'], data['country'], data.get('volume', 0), calc_config, data['engine_type'], data.get('is_from_kazan'))
     
     year_display_text = data.get('age_category', LEXICON_RU.get(data['year'], data['year']))
@@ -68,7 +68,7 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
 @calculator_router.callback_query(F.data == 'detailed_calculation', StateFilter(CalculatorFSM.result))
 async def process_detailed_calculation_press(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
-    calc_config = load_calc_config()
+    calc_config = await load_calc_config_async()
     costs = await calculate_cost(data['year'], data['cost'], data['country'], data.get('volume', 0), calc_config, data['engine_type'], data.get('is_from_kazan'))
 
     detailed_output_text = f"{LEXICON_RU['calculation_params']}:\n"
@@ -159,8 +159,7 @@ async def process_back_press(callback: CallbackQuery, state: FSMContext):
 @calculator_router.callback_query(StateFilter(CalculatorFSM.year))
 async def process_year_sent(callback: CallbackQuery, state: FSMContext):
     await state.update_data(year=callback.data)
-    await callback.message.delete()
-    await callback.message.answer(
+    await callback.message.edit_text(
         text=f"{LEXICON_RU['select_engine_type']}\n\n{LEXICON_RU['hybrid_info']}",
         reply_markup=create_engine_type_keyboard()
     )
@@ -170,8 +169,7 @@ async def process_year_sent(callback: CallbackQuery, state: FSMContext):
 @calculator_router.callback_query(StateFilter(CalculatorFSM.engine_type))
 async def process_engine_type_press(callback: CallbackQuery, state: FSMContext):
     await state.update_data(engine_type=callback.data)
-    await callback.message.delete()
-    await callback.message.answer(
+    await callback.message.edit_text(
         text=LEXICON_RU['select_country'],
         reply_markup=create_country_keyboard()
     )
@@ -187,15 +185,14 @@ COUNTRY_CURRENCY_MAP = {
 async def process_country_sent(callback: CallbackQuery, state: FSMContext):
     country = callback.data
     await state.update_data(country=country)
-    await callback.message.delete()
     
     currency_text = COUNTRY_CURRENCY_MAP.get(country, '')
     
-    sent_message = await callback.message.answer(
+    await callback.message.edit_text(
         text=f"{LEXICON_RU['enter_cost']} {currency_text}",
         reply_markup=create_cost_keyboard()
     )
-    await state.update_data(prompt_message_id=sent_message.message_id)
+    await state.update_data(prompt_message_id=callback.message.message_id)
     await state.set_state(CalculatorFSM.cost)
     await callback.answer()
 

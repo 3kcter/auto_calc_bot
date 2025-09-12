@@ -1,6 +1,7 @@
 from dataclasses import dataclass, asdict
 from environs import Env
 import json
+import aiofiles
 
 @dataclass
 class TgBot:
@@ -35,9 +36,17 @@ def load_calc_config(path: str = 'calc_config.json') -> CalcConfig:
     with open(path, 'r') as f:
         return CalcConfig(**json.load(f))
 
+async def load_calc_config_async(path: str = 'calc_config.json') -> CalcConfig:
+    async with aiofiles.open(path, 'r', encoding='utf-8') as f:
+        return CalcConfig(**json.loads(await f.read()))
+
 def save_calc_config(config: CalcConfig, path: str = 'calc_config.json'):
     with open(path, 'w') as f:
         json.dump(asdict(config), f, indent=4)
+
+async def save_calc_config_async(config: CalcConfig, path: str = 'calc_config.json'):
+    async with aiofiles.open(path, 'w', encoding='utf-8') as f:
+        await f.write(json.dumps(asdict(config), indent=4))
 
 def load_config(path: str | None = None) -> Config:
     env: Env = Env()
@@ -53,4 +62,3 @@ def load_config(path: str | None = None) -> Config:
         log=LogSettings(level=env('LOG_LEVEL'), format=env('LOG_FORMAT')),
         calc=load_calc_config()
     )
-

@@ -1,5 +1,6 @@
 import re
 import json
+import logging
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -73,9 +74,9 @@ def parse_che168_selenium(driver, url: str) -> tuple[dict, str | None]:
     error = None
     
     try:
-        print(f"DEBUG: Navigating to URL: {url}")
+        logging.debug(f"Navigating to URL: {url}")
         driver.get(url)
-        print(f"DEBUG: Page loaded for URL: {url}")
+        logging.debug(f"Page loaded for URL: {url}")
         
         wait = WebDriverWait(driver, 30) # Increased timeout to 30 seconds
         
@@ -86,7 +87,7 @@ def parse_che168_selenium(driver, url: str) -> tuple[dict, str | None]:
         price_str = driver.find_element(By.ID, "car_price").get_attribute("value")
         year_str = driver.find_element(By.ID, "car_firstregtime").get_attribute("value")
         car_name = driver.find_element(By.ID, "car_carname").get_attribute("value")
-        print(f"DEBUG: price_str: {price_str}, year_str: {year_str}, car_name: {repr(car_name)}")
+        logging.debug(f"price_str: {price_str}, year_str: {year_str}, car_name: {repr(car_name)}")
 
         # Преобразование данных
         try:
@@ -103,7 +104,7 @@ def parse_che168_selenium(driver, url: str) -> tuple[dict, str | None]:
         # Try to find fuel type first
         fuel_type_element = _find_element_by_xpath(driver, "//li[span[contains(text(), '能源类型') or contains(text(), '燃料类型')]]")
         fuel_type_text = fuel_type_element.text if fuel_type_element else ""
-        print(f"DEBUG: fuel_type_text: {fuel_type_text}")
+        logging.debug(f"fuel_type_text: {fuel_type_text}")
 
         if fuel_type_text and "纯电动" in fuel_type_text:
             data['engine_type'] = "electro"
@@ -112,12 +113,12 @@ def parse_che168_selenium(driver, url: str) -> tuple[dict, str | None]:
             try:
                 battery_capacity_element = _find_element_by_xpath(driver, "//li[span[contains(text(), '电池容量')]]")
                 battery_capacity_str = battery_capacity_element.text.strip() if battery_capacity_element else ""
-                print(f"DEBUG: battery_capacity_str: {battery_capacity_str}")
+                logging.debug(f"battery_capacity_str: {battery_capacity_str}")
                 # Извлекаем числовое значение, например, из "75kWh"
                 capacity_match = re.search(r'(\d+\.?\d*)', battery_capacity_str)
                 if capacity_match:
                     data['volume'] = int(float(capacity_match.group(1)) * 1000) # Переводим kWh в Wh для объема
-                    print(f"DEBUG: Electric volume (Wh): {data['volume']}")
+                    logging.debug(f"Electric volume (Wh): {data['volume']}")
                 else:
                     data['volume'] = 0 # Если не удалось извлечь, ставим 0
             except ValueError:
@@ -126,7 +127,7 @@ def parse_che168_selenium(driver, url: str) -> tuple[dict, str | None]:
             # If not electric by fuel type, try to find displacement
             displacement_element = _find_element_by_xpath(driver, "//li[span[contains(text(), '排量')]]")
             displacement_text = displacement_element.text if displacement_element else ""
-            print(f"DEBUG: displacement_text: {displacement_text}")
+            logging.debug(f"displacement_text: {displacement_text}")
 
             if displacement_text:
                 volume_match = re.search(r'(\d+\.?\d*)(L|T)', displacement_text)
@@ -135,7 +136,7 @@ def parse_che168_selenium(driver, url: str) -> tuple[dict, str | None]:
                         volume_liters = float(volume_match.group(1))
                         data['volume'] = int(volume_liters * 1000) # Переводим литры в куб. см.
                         data['engine_type'] = "ДВС"
-                        print(f"DEBUG: ICE volume (cc): {data['volume']}")
+                        logging.debug(f"ICE volume (cc): {data['volume']}")
                     except ValueError:
                         error = "Неверный формат объема двигателя."
                 else:
@@ -147,12 +148,12 @@ def parse_che168_selenium(driver, url: str) -> tuple[dict, str | None]:
                 try:
                     battery_capacity_element = _find_element_by_xpath(driver, "//li[span[contains(text(), '电池容量')]]")
                     battery_capacity_str = battery_capacity_element.text.strip() if battery_capacity_element else ""
-                    print(f"DEBUG: Fallback battery_capacity_str: {battery_capacity_str}")
+                    logging.debug(f"Fallback battery_capacity_str: {battery_capacity_str}")
                     # Извлекаем числовое значение, например, из "75kWh"
                     capacity_match = re.search(r'(\d+\.?\d*)', battery_capacity_str)
                     if capacity_match:
                         data['volume'] = int(float(capacity_match.group(1)) * 1000) # Переводим kWh в Wh для объема
-                        print(f"DEBUG: Fallback Electric volume (Wh): {data['volume']}")
+                        logging.debug(f"Fallback Electric volume (Wh): {data['volume']}")
                     else:
                         data['volume'] = 0 # Если не удалось извлечь, ставим 0
                 except ValueError:
@@ -165,7 +166,7 @@ def parse_che168_selenium(driver, url: str) -> tuple[dict, str | None]:
                         volume_liters = float(page_source_volume_match.group(1))
                         data['volume'] = int(volume_liters * 1000) # Переводим литры в куб. см.
                         data['engine_type'] = "ДВС"
-                        print(f"DEBUG: Fallback ICE volume (cc) (page_source): {data['volume']}")
+                        logging.debug(f"Fallback ICE volume (cc) (page_source): {data['volume']}")
                     except ValueError:
                         error = "Неверный формат объема двигателя из page_source."
                 else:
@@ -178,8 +179,8 @@ def parse_che168_selenium(driver, url: str) -> tuple[dict, str | None]:
     except Exception as e:
         error = f"Произошла непредвиденная ошибка при парсинге che168.com: {e}"
             
-    print(f"DEBUG: Final data (parse_car_data): {data}")
-    print(f"DEBUG: Final error (parse_car_data): {error}")
+    logging.debug(f"Final data (parse_car_data): {data}")
+    logging.debug(f"Final error (parse_car_data): {error}")
     return data, error
 
 def _find_element_by_xpath(driver, xpath):
