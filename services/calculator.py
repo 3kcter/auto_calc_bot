@@ -106,6 +106,7 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
     eur_rate = rates.get('EUR', 90.0)
     usd_rate = rates.get('USD', 90.0)
     cny_rate = rates.get('CNY', 12.0)
+    krw_rate = rates.get('KRW', 0.07)
     cost_eur = cost_rub / eur_rate
 
     customs_payments_eur = _calculate_customs_payments(age, cost_eur, volume, engine_type)
@@ -114,30 +115,45 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
     recycling_fee = _calculate_recycling_fee(age, volume, engine_type)
     customs_clearance = _calculate_customs_clearance(cost_rub)
 
+    # Initialize all possible costs to 0
     dealer_commission = 0
-    if country == 'korea':
-        dealer_commission = calc_config.korea_dealer_commission
-    elif country == 'china':
-        dealer_commission = calc_config.china_dealer_commission
-
     china_documents_delivery = 0
     logistics_cost = 0
     lab_svh_cost = 0
+    korea_inland_transport = 0
+    korea_port_transport_loading = 0
+    vladivostok_expenses = 0
+    logistics_vladivostok_kazan = 0
+    car_preparation = 0
+    other_expenses = 0
 
     if country == 'china':
-        china_documents_delivery = calc_config.china_documents_delivery_cny * cny_rate
-        
-        logistics_cost = calc_config.logistics_kazan_usd * usd_rate + calc_config.logistics_kazan_rub
+        china_config = calc_config.china
+        dealer_commission = china_config.dealer_commission
+        china_documents_delivery = china_config.documents_delivery_cny * cny_rate
+        logistics_cost = china_config.logistics_kazan_usd * usd_rate + china_config.logistics_kazan_rub
         if is_from_kazan == 'no':
             logistics_cost += 40000
-
-        lab_svh_cost = calc_config.lab_svh_kazan_rub
+        lab_svh_cost = china_config.lab_svh_kazan_rub
         if is_from_kazan == 'no':
-            lab_svh_cost = calc_config.lab_svh_not_kazan_rub
+            lab_svh_cost = china_config.lab_svh_not_kazan_rub
+        other_expenses = china_config.other_expenses_rub
+
+    elif country == 'korea':
+        korea_config = calc_config.korea
+        dealer_commission = korea_config.dealer_commission_krw * krw_rate
+        korea_inland_transport = korea_config.inland_transport_krw * krw_rate
+        korea_port_transport_loading = korea_config.port_transport_loading_krw * krw_rate
+        vladivostok_expenses = korea_config.vladivostok_expenses_rub
+        logistics_vladivostok_kazan = korea_config.logistics_vladivostok_kazan_rub
+        car_preparation = korea_config.car_preparation_rub
+        other_expenses = korea_config.other_expenses_rub
 
     total_cost_rub = (
         cost_rub + dealer_commission + customs_payments + recycling_fee +
-        customs_clearance + china_documents_delivery + logistics_cost + lab_svh_cost
+        customs_clearance + china_documents_delivery + logistics_cost + lab_svh_cost +
+        korea_inland_transport + korea_port_transport_loading + vladivostok_expenses +
+        logistics_vladivostok_kazan + car_preparation + other_expenses
     )
 
     vat = 0
@@ -151,29 +167,21 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
 
     return {
         "car_cost": cost_rub,
-        "korea_dealer_commission": calc_config.korea_dealer_commission,
-        "china_dealer_commission": calc_config.china_dealer_commission,
+        "dealer_commission": dealer_commission,
         "customs_payments": customs_payments,
         "customs_clearance": customs_clearance,
         "recycling_fee": recycling_fee,
         "china_documents_delivery": china_documents_delivery,
         "logistics_cost": logistics_cost,
         "lab_svh_cost": lab_svh_cost,
+        "korea_inland_transport": korea_inland_transport,
+        "korea_port_transport_loading": korea_port_transport_loading,
+        "vladivostok_expenses": vladivostok_expenses,
+        "logistics_vladivostok_kazan": logistics_vladivostok_kazan,
+        "car_preparation": car_preparation,
+        "other_expenses": other_expenses,
         "vat": vat,
         "total_cost": total_cost_original_currency,
         "total_cost_rub": total_cost_rub,
     }
-    print("Calculated costs:", {
-        "car_cost": cost_rub,
-        "korea_dealer_commission": calc_config.korea_dealer_commission,
-        "china_dealer_commission": calc_config.china_dealer_commission,
-        "customs_payments": customs_payments,
-        "recycling_fee": recycling_fee,
-        "customs_clearance": customs_clearance,
-        "china_documents_delivery": china_documents_delivery,
-        "logistics_cost": logistics_cost,
-        "lab_svh_cost": lab_svh_cost,
-        "vat": vat,
-        "total_cost": total_cost_original_currency,
-        "total_cost_rub": total_cost_rub,
-    })
+    

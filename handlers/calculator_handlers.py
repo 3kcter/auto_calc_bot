@@ -95,12 +95,19 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
     detailed_output_text += f"🔸 {LEXICON_RU['recycling_fee']}: {costs['recycling_fee']:,} руб.\n"
 
     if data['country'] == 'korea':
-        detailed_output_text += f"🔸 {LEXICON_RU['calc_config_fields']['korea_dealer_commission']}: {costs['korea_dealer_commission']:,} руб.\n"
+        detailed_output_text += f"🔸 {LEXICON_RU['dealer_commission']}: {costs['dealer_commission']:,} руб.\n"
+        detailed_output_text += f"🔸 {LEXICON_RU['korea_inland_transport']}: {costs['korea_inland_transport']:,} руб.\n"
+        detailed_output_text += f"🔸 {LEXICON_RU['korea_port_transport_loading']}: {costs['korea_port_transport_loading']:,} руб.\n"
+        detailed_output_text += f"🔸 {LEXICON_RU['vladivostok_expenses']}: {costs['vladivostok_expenses']:,} руб.\n"
+        detailed_output_text += f"🔸 {LEXICON_RU['logistics_vladivostok_kazan']}: {costs['logistics_vladivostok_kazan']:,} руб.\n"
+        detailed_output_text += f"🔸 {LEXICON_RU['car_preparation']}: {costs['car_preparation']:,} руб.\n"
+        detailed_output_text += f"🔸 {LEXICON_RU['other_expenses']}: {costs['other_expenses']:,} руб.\n"
     elif data['country'] == 'china':
-        detailed_output_text += f"🔸 {LEXICON_RU['calc_config_fields']['china_dealer_commission']}: {costs['china_dealer_commission']:,} руб.\n"
-        detailed_output_text += f"🔸 {LEXICON_RU['calc_config_fields']['china_documents_delivery_cny']}: {round(costs['china_documents_delivery']):,} руб.\n"
-        detailed_output_text += f"🔸 Логистика: {round(costs['logistics_cost']):,} руб.\n"
-        detailed_output_text += f"🔸 Лаборатория и СВХ: {round(costs['lab_svh_cost']):,} руб.\n"
+        detailed_output_text += f"🔸 {LEXICON_RU['dealer_commission']}: {costs['dealer_commission']:,} руб.\n"
+        detailed_output_text += f"🔸 {LEXICON_RU['china_documents_delivery']}: {round(costs['china_documents_delivery']):,} руб.\n"
+        detailed_output_text += f"🔸 {LEXICON_RU['logistics_cost']}: {round(costs['logistics_cost']):,} руб.\n"
+        detailed_output_text += f"🔸 {LEXICON_RU['lab_svh_cost']}: {round(costs['lab_svh_cost']):,} руб.\n"
+        detailed_output_text += f"🔸 {LEXICON_RU['other_expenses']}: {costs['other_expenses']:,} руб.\n"
 
     if costs['vat'] > 0:
         detailed_output_text += f"🔸 {LEXICON_RU['vat']}: {round(costs['vat']):,} руб.\n"
