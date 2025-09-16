@@ -134,7 +134,16 @@ def parse_encar_selenium(url: str) -> tuple[dict, str | None]:
                     except ValueError:
                         logging.warning(f"Could not convert price '{price}' to int in preloaded state (Selenium).")
                 data['volume'] = car_info.get('spec', {}).get('displacement')
-                data['engine_type'] = car_info.get('spec', {}).get('fuelType')
+                fuel_type_from_preloaded = car_info.get('spec', {}).get('fuelName') # Changed from 'fuelType' to 'fuelName'
+                if fuel_type_from_preloaded:
+                    normalized_fuel_type = fuel_type_from_preloaded.lower()
+                    if "diesel" in normalized_fuel_type or "gasoline" in normalized_fuel_type or "디젤" in normalized_fuel_type or "가솔린" in normalized_fuel_type: # Added Korean terms
+                        data['engine_type'] = 'ДВС'
+                    elif "electro" in normalized_fuel_type or "전기" in normalized_fuel_type: # Added Korean term
+                        data['engine_type'] = 'Электро'
+                    else:
+                        data['engine_type'] = fuel_type_from_preloaded # Keep original if not matched
+                        logging.debug(f"Unmatched fuel type from preloaded state: {fuel_type_from_preloaded}")
                 # Power might still need to be scraped from HTML if not in preloaded state
         else:
             logging.warning("Could not find __PRELOADED_STATE__ using Selenium. Falling back to BeautifulSoup-like scraping.")
@@ -186,7 +195,14 @@ def parse_encar_selenium(url: str) -> tuple[dict, str | None]:
                                 logging.warning(f"Could not convert volume '{volume_match.group(1)}' to int.")
 
                     if '연료' in title and not data['engine_type']:
-                        data['engine_type'] = value
+                        normalized_fuel_type = value.lower()
+                        if "diesel" in normalized_fuel_type or "gasoline" in normalized_fuel_type or "디젤" in normalized_fuel_type or "가솔린" in normalized_fuel_type: # Added Korean terms
+                            data['engine_type'] = 'ДВС'
+                        elif "electro" in normalized_fuel_type or "전기" in normalized_fuel_type: # Added Korean term
+                            data['engine_type'] = 'Электро'
+                        else:
+                            data['engine_type'] = value # Keep original if not matched
+                            logging.debug(f"Unmatched fuel type from Selenium scraping: {value}")
 
                     if '최고출력' in title and not data['power']:
                         power_match = re.search(r'(\d+)', value)
