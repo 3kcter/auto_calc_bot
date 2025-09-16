@@ -68,7 +68,7 @@ def _calculate_customs_payments(age, cost_eur, volume, engine_type):
     if 'by_cost' in rates:
         # For cars up to 3 years old, the calculation is per euro of cost or per cm3 of volume
         rate_info = _get_row_from_table(cost_eur, rates['by_cost'])
-        return min(cost_eur * rate_info[1], rate_info[2] * volume)
+        return max(cost_eur * rate_info[1], rate_info[2] * volume)
 
     elif 'by_volume' in rates:
         rate_eur = _get_rate_from_table(volume, rates['by_volume'])
