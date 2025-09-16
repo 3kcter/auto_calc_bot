@@ -7,3 +7,4 @@ calc_config.json
 __pycache__/
 .DS_Store/
 .ruff_cache/
+log.txt

@@ -3,6 +3,14 @@ import json
 import logging
 from bs4 import BeautifulSoup
 
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager # For easier WebDriver management
+
+
 def validate_and_normalize_url(url: str) -> tuple[str | None, str | None]:
     """
     Валидирует и нормализует URL, чтобы он соответствовал одному из поддерживаемых форматов.
@@ -20,38 +28,197 @@ def validate_and_normalize_url(url: str) -> tuple[str | None, str | None]:
 
     return None, "Пожалуйста, отправьте ссылку на сайт encar.com или che168.com"
 
-def parse_car_data(url: str, html_content: str) -> tuple[dict, str | None]:
+def _parse_encar_preloaded_state(html_content: str) -> tuple[dict, str | None]:
     """
-    Парсит данные об автомобиле с encar.com из предоставленного HTML-контента.
+    Парсит данные об автомобиле с encar.com из предоставленного HTML-контента, используя __PRELOADED_STATE__.
     """
     data = {
         'year': None,
         'cost': None,
-        'currency': None,
+        'currency': 'KRW',
         'volume': None,
-        'engine_type': None
+        'engine_type': None,
+        'power': None,
+        'country': 'korea'
     }
     error = None
 
-    if 'encar.com' in url:
-        try:
-            preloaded_state_match = re.search(r'__PRELOADED_STATE__\s*=\s*({.*?})</script>', html_content)
-            if preloaded_state_match:
-                preloaded_state = json.loads(preloaded_state_match.group(1))
-                car_info = preloaded_state.get('cars', {}).get('base', {})
-                if car_info:
-                    data['year'] = car_info.get('category', {}).get('formYear')
-                    price = car_info.get('advertisement', {}).get('price')
-                    if price:
+    try:
+        preloaded_state_match = re.search(r'__PRELOADED_STATE__\s*=\s*({.*?})</script>', html_content)
+        if preloaded_state_match:
+            preloaded_state = json.loads(preloaded_state_match.group(1))
+            car_info = preloaded_state.get('cars', {}).get('base', {})
+            if car_info:
+                data['year'] = car_info.get('category', {}).get('formYear')
+                price = car_info.get('advertisement', {}).get('price')
+                if price:
+                    try:
                         data['cost'] = int(price) * 10000
-                        data['currency'] = 'KRW'
-                    data['volume'] = car_info.get('spec', {}).get('displacement')
-            else:
-                error = "Не удалось найти данные о машине на encar.com."
-        except (json.JSONDecodeError, AttributeError) as e:
-            error = f"Ошибка обработки данных с encar.com: {e}"
+                    except ValueError:
+                        logging.warning(f"Could not convert price '{price}' to int in preloaded state.")
+                data['volume'] = car_info.get('spec', {}).get('displacement')
+                # Attempt to get engine_type and power from preloaded state if available
+                # This part might need further refinement based on actual preloaded state structure
+                data['engine_type'] = car_info.get('spec', {}).get('fuelType') # Assuming fuelType maps to engine_type
+                # Power is not directly available in the provided example of preloaded state, will try to parse later if needed
+        else:
+            error = "Не удалось найти данные о машине на encar.com в __PRELOADED_STATE__."
+    except (json.JSONDecodeError, AttributeError) as e:
+        error = f"Ошибка обработки данных с encar.com из __PRELOADED_STATE__: {e}"
     
     return data, error
+
+def parse_encar_selenium(url: str) -> tuple[dict, str | None]:
+    logging.info(f"Starting to parse encar.com data using Selenium for URL: {url}")
+    data = {
+        'year': None,
+        'cost': None,
+        'currency': 'KRW',
+        'volume': None,
+        'engine_type': None,
+        'power': None,
+        'country': 'korea'
+    }
+    error = None
+    driver = None
+
+    try:
+        # Setup Chrome options for headless browsing
+        options = webdriver.ChromeOptions()
+        options.add_argument('--headless')
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-gpu') # Applicable to Windows as well
+        options.add_argument('--window-size=1920,1080') # Set a common window size
+
+        # Initialize WebDriver
+        # Using ChromeDriverManager to automatically download and manage ChromeDriver
+        driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+        driver.get(url)
+
+        # --- CAPTCHA Handling Placeholder ---
+        # If a CAPTCHA is detected, this is where you would implement logic to handle it.
+        # This might involve waiting for user input, using a CAPTCHA solving service,
+        # or more advanced techniques. Direct CAPTCHA solving is beyond the scope
+        # of this automated refactoring.
+        # Example: if "captcha" in driver.page_source.lower():
+        #     error = "CAPTCHA detected. Manual intervention or CAPTCHA solving service required."
+        #     return data, error
+        # --- End CAPTCHA Handling Placeholder ---
+
+        # Wait for the body element to be present, which is more generic.
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.TAG_NAME, 'body'))
+        )
+
+        # Attempt to extract from __PRELOADED_STATE__ first, as it's often more reliable
+        # This requires executing JavaScript in the browser context
+        preloaded_state_script = "return window.__PRELOADED_STATE__;"
+        preloaded_state = driver.execute_script(preloaded_state_script)
+
+        if preloaded_state:
+            logging.debug(f"Preloaded state: {preloaded_state}")
+            car_info = preloaded_state.get('cars', {}).get('base', {})
+            if car_info:
+                logging.debug(f"Car info from preloaded state: {car_info}")
+                year_str = car_info.get('category', {}).get('formYear')
+                if year_str:
+                    try:
+                        data['year'] = int(year_str)
+                    except ValueError:
+                        logging.warning(f"Could not convert year '{year_str}' to int in preloaded state (Selenium).")
+                price = car_info.get('advertisement', {}).get('price')
+                if price:
+                    try:
+                        data['cost'] = int(price) * 10000
+                    except ValueError:
+                        logging.warning(f"Could not convert price '{price}' to int in preloaded state (Selenium).")
+                data['volume'] = car_info.get('spec', {}).get('displacement')
+                data['engine_type'] = car_info.get('spec', {}).get('fuelType')
+                # Power might still need to be scraped from HTML if not in preloaded state
+        else:
+            logging.warning("Could not find __PRELOADED_STATE__ using Selenium. Falling back to BeautifulSoup-like scraping.")
+
+        # If data is still missing, or if __PRELOADED_STATE__ wasn't found,
+        # fall back to scraping from the rendered HTML using Selenium's element finders.
+        # This part will be similar to the BeautifulSoup logic but using Selenium methods.
+        if not all(data.get(k) for k in ['year', 'cost', 'volume']):
+            logging.info("Attempting to parse encar.com data with Selenium element finders.")
+
+            # Year
+            try:
+                year_element = driver.find_element(By.CLASS_NAME, 'year')
+                year_match = re.search(r'(\d{4})', year_element.text)
+                if year_match:
+                    try:
+                        data['year'] = int(year_match.group(1))
+                    except ValueError:
+                        logging.warning(f"Could not convert year '{year_match.group(1)}' to int.")
+            except Exception as e:
+                logging.debug(f"Could not find year with Selenium: {e}")
+
+            # Cost
+            try:
+                price_element = driver.find_element(By.CLASS_NAME, 'info_price')
+                price_text = price_element.text.replace(',', '').strip()
+                price_match = re.search(r'(\d+)', price_text)
+                if price_match:
+                    try:
+                        data['cost'] = int(price_match.group(1)) * 10000
+                    except ValueError:
+                        logging.warning(f"Could not convert cost '{price_match.group(1)}' to int.")
+            except Exception as e:
+                logging.debug(f"Could not find cost with Selenium: {e}")
+
+            # Volume, Engine Type, Power
+            spec_items = driver.find_elements(By.CLASS_NAME, 'spec_item')
+            for item in spec_items:
+                try:
+                    title = item.find_element(By.CLASS_NAME, 'tit').text.strip()
+                    value = item.find_element(By.CLASS_NAME, 'txt').text.strip()
+
+                    if '배기량' in title and not data['volume']:
+                        volume_match = re.search(r'(\d+)', value)
+                        if volume_match:
+                            try:
+                                data['volume'] = int(volume_match.group(1))
+                            except ValueError:
+                                logging.warning(f"Could not convert volume '{volume_match.group(1)}' to int.")
+
+                    if '연료' in title and not data['engine_type']:
+                        data['engine_type'] = value
+
+                    if '최고출력' in title and not data['power']:
+                        power_match = re.search(r'(\d+)', value)
+                        if power_match:
+                            try:
+                                data['power'] = int(power_match.group(1))
+                            except ValueError:
+                                logging.warning(f"Could not convert power '{power_match.group(1)}' to int.")
+                except Exception as e:
+                    logging.debug(f"Error parsing spec item with Selenium: {e}")
+
+        if not all(data.get(k) for k in ['year', 'cost', 'volume']):
+            error = error if error else "Не удалось полностью спарсить данные с encar.com с помощью Selenium."
+            if driver:
+                logging.error(f"Page source on error: {driver.page_source}")
+
+    except Exception as e:
+        error = f"Произошла непредвиденная ошибка при парсинге encar.com с помощью Selenium: {e}"
+        logging.error(error)
+    finally:
+        if driver:
+            driver.quit()
+
+    logging.info(f"Final parsed data for encar.com (Selenium): {data}")
+    logging.info(f"Final error state for encar.com (Selenium): {error}")
+    return data, error
+
+def parse_encar_requests(url: str) -> tuple[dict, str | None]:
+    """
+    Парсит данные об автомобиле с encar.com с использованием Selenium.
+    """
+    return parse_encar_selenium(url)
 
 def parse_che168_requests(html_content: str) -> tuple[dict, str | None]:
     """
@@ -107,7 +274,6 @@ def parse_che168_requests(html_content: str) -> tuple[dict, str | None]:
              error = "Не удалось найти год."
         logging.info(f"Year parsing result: year={data['year']}, month={data.get('month')}, error={error}")
 
-
         # Определение типа двигателя и объема
         text_content = soup.get_text()
         logging.info(f"Full text content for engine parsing:\n{text_content}")
@@ -143,4 +309,3 @@ def parse_che168_requests(html_content: str) -> tuple[dict, str | None]:
         logging.error(error)
 
     return data, error
-
