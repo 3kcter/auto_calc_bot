@@ -3,11 +3,10 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
 import aiohttp
-import asyncio
 import datetime
 
 from lexicon.lexicon import LEXICON_RU
-from services.parser import parse_car_data, validate_and_normalize_url, parse_che168_selenium
+from services.parser import parse_car_data, validate_and_normalize_url, parse_che168_requests
 from config.config import load_config, Config
 from handlers.calculator_handlers import send_calculation_result, CalculatorFSM
 
@@ -51,21 +50,21 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
     processing_message = await message.answer(LEXICON_RU['processing_url'])
 
     try:
-        if 'encar.com' in url:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as response:
-                    if response.status == 200:
-                        html_content = await response.text()
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    html_content = await response.text()
+                    if 'encar.com' in url:
                         car_data, error = parse_car_data(url, html_content)
+                    elif 'che168.com' in url:
+                        car_data, error = parse_che168_requests(html_content)
                     else:
-                        error = f"Failed to load page, status: {response.status}"
-                        car_data = None
-        elif 'che168.com' in url:
-            car_data, error = await asyncio.to_thread(parse_che168_selenium, url)
-        else:
-            await message.answer("Пожалуйста, отправьте ссылку на сайт encar.com или che168.com")
-            await processing_message.delete() # Delete processing message
-            return
+                        await message.answer("Пожалуйста, отправьте ссылку на сайт encar.com или che168.com")
+                        await processing_message.delete() # Delete processing message
+                        return
+                else:
+                    error = f"Failed to load page, status: {response.status}"
+                    car_data = None
 
         if error:
             await message.answer(f"Не удалось извлечь все необходимые данные со страницы: {error}. Пожалуйста, попробуйте другую ссылку или воспользуйтесь обычным калькулятором.")
