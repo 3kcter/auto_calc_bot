@@ -41,8 +41,7 @@ async def main():
     dp.include_router(common_router)
     dp.include_router(calculator_router)
     
-    if os.getenv('ENABLE_PARSER', 'False').lower() == 'true':
-        dp.include_router(url_router)
+    dp.include_router(url_router)
     
     dp.include_router(rates_router)
 

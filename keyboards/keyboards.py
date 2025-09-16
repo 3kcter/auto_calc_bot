@@ -13,10 +13,9 @@ def create_main_menu_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text=LEXICON_RU['calculator'], callback_data='calculator'),
         InlineKeyboardButton(text=LEXICON_RU['exchange_rates'], callback_data='exchange_rates')
     )
-    if os.getenv('ENABLE_PARSER', 'False').lower() == 'true':
-        builder.row(
-            InlineKeyboardButton(text=LEXICON_RU['calculate_by_url'], callback_data='calculate_by_url')
-        )
+    builder.row(
+        InlineKeyboardButton(text=LEXICON_RU['calculate_by_url'], callback_data='calculate_by_url')
+    )
     return builder.as_markup()
 
 

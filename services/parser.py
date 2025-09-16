@@ -96,9 +96,14 @@ def parse_che168_selenium(driver, url: str) -> tuple[dict, str | None]:
             error = "Неверный формат цены."
 
         try:
-            # Год может быть в формате "YYYY/MM", берем только год
-            data['year'] = int(year_str.split('/')[0])
-        except ValueError:
+            # Год может быть в формате "YYYY/MM", берем год и месяц
+            year_parts = year_str.split('/')
+            data['year'] = int(year_parts[0])
+            if len(year_parts) > 1:
+                data['month'] = int(year_parts[1])
+            else:
+                data['month'] = 1 # Default to 1 if month is not present
+        except (ValueError, IndexError):
             error = "Неверный формат года."
         
         # Try to find fuel type first

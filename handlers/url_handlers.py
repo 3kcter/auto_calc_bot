@@ -13,13 +13,16 @@ from handlers.calculator_handlers import send_calculation_result, CalculatorFSM
 
 url_router = Router()
 
-def get_age_category_val(car_year: int) -> str:
-    current_year = datetime.datetime.now().year
-    age = current_year - car_year
-
-    if age < 3:
+def get_age_category_val(car_year: int, car_month: int = 1) -> str:
+    now = datetime.datetime.now()
+    current_year = now.year
+    current_month = now.month
+    
+    age_in_months = (current_year - car_year) * 12 + (current_month - car_month)
+    
+    if age_in_months < 36:
         return "year_less_3"
-    elif 3 <= age <= 5:
+    elif 36 <= age_in_months <= 60:
         return "year_3_5"
     else:
         return "year_more_5"
@@ -74,7 +77,7 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
         if car_data and all(car_data.get(k) is not None for k in ['year', 'cost', 'volume']):
             # Apply age categorization if year is available from parser
             if car_data.get('year') is not None:
-                age_val = get_age_category_val(car_data['year'])
+                age_val = get_age_category_val(car_data['year'], car_data.get('month', 1))
                 car_data['year'] = age_val
                 car_data['age_category'] = get_age_category_display(age_val)
             
