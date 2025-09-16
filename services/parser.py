@@ -63,6 +63,7 @@ def parse_che168_requests(html_content: str) -> tuple[dict, str | None]:
         'cost': None,
         'currency': 'CNY',
         'volume': None,
+        'power': None,  # New field for power
         'country': 'china',
         'engine_type': None
     }
@@ -71,7 +72,7 @@ def parse_che168_requests(html_content: str) -> tuple[dict, str | None]:
     try:
         soup = BeautifulSoup(html_content, 'lxml')
 
-        # Извлечение данных из скрытых полей ввода
+        # ... (rest of the price and year parsing code remains the same)
         price_input = soup.find('input', {'id': 'car_price'})
         year_input = soup.find('input', {'id': 'car_firstregtime'})
         
@@ -106,6 +107,7 @@ def parse_che168_requests(html_content: str) -> tuple[dict, str | None]:
              error = "Не удалось найти год."
         logging.info(f"Year parsing result: year={data['year']}, month={data.get('month')}, error={error}")
 
+
         # Определение типа двигателя и объема
         text_content = soup.get_text()
         logging.info(f"Full text content for engine parsing:\n{text_content}")
@@ -115,21 +117,23 @@ def parse_che168_requests(html_content: str) -> tuple[dict, str | None]:
 
         if is_electric:
             data['engine_type'] = 'electro'
+            data['volume'] = 0
             capacity_match = re.search(r'(\d+\.?\d*)\s*kwh', text_content, re.IGNORECASE)
             logging.info(f"Capacity match: {capacity_match}")
             if capacity_match:
-                data['volume'] = int(float(capacity_match.group(1)) * 1000) # kWh to Wh
+                data['power'] = float(capacity_match.group(1))
             else:
-                data['volume'] = 0
+                data['power'] = 0
         else:
             data['engine_type'] = 'ДВС'
+            data['power'] = None
             volume_match = re.search(r'(\d+\.?\d*)\s*L', text_content)
             logging.info(f"Volume match: {volume_match}")
             if volume_match:
                 data['volume'] = int(float(volume_match.group(1)) * 1000) # L to cc
 
-        if data['volume'] is None:
-            error = "Не удалось определить объем двигателя."
+        if data['volume'] is None and data['power'] is None:
+            error = "Не удалось определить объем или мощность двигателя."
         
         logging.info(f"Final parsed data: {data}")
         logging.info(f"Final error state: {error}")

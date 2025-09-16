@@ -42,14 +42,25 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
 
     currency_symbol = COUNTRY_CURRENCY_SYMBOL_MAP.get(data['country'], '')
 
-    output_text =         f"{LEXICON_RU['calculation_params']}:\n"         f"🔹 {LEXICON_RU['car_age']}: {year_display_text}\n"         f"🔹 {LEXICON_RU['engine_type_label']}: {engine_type_text}\n"         f"🔹 {LEXICON_RU['car_cost']}: {data['cost']:,} {currency_symbol}\n"
+    output_text = (
+        f"{LEXICON_RU['calculation_params']}:\n"
+        f"🔹 {LEXICON_RU['car_age']}: {year_display_text}\n"
+        f"🔹 {LEXICON_RU['engine_type_label']}: {engine_type_text}\n"
+        f"🔹 {LEXICON_RU['car_cost']}: {data['cost']:,} {currency_symbol}\n"
+    )
     
-    if data.get('volume', 0) > 0:
+    if data['engine_type'] == 'electro' and data.get('power', 0) > 0:
+        output_text += f"🔹 {LEXICON_RU['power']}: {data['power']} кВт⋅ч\n\n"
+    elif data.get('volume', 0) > 0:
         output_text += f"🔹 {LEXICON_RU['engine_volume']}: {data.get('volume', 0)} куб. см.\n\n"
     else:
         output_text += "\n" # Add a newline if engine volume is not displayed, to maintain spacing
 
-    output_text +=         f"🔸 {LEXICON_RU['customs_payments']}: {round(costs['customs_payments']):,} руб.\n"         f"🔸 {LEXICON_RU['customs_clearance']}: {round(costs['customs_clearance']):,} руб.\n"         f"🔸 {LEXICON_RU['recycling_fee']}: {costs['recycling_fee']:,} руб.\n"
+    output_text += (
+        f"🔸 {LEXICON_RU['customs_payments']}: {round(costs['customs_payments']):,} руб.\n"
+        f"🔸 {LEXICON_RU['customs_clearance']}: {round(costs['customs_clearance']):,} руб.\n"
+        f"🔸 {LEXICON_RU['recycling_fee']}: {costs['recycling_fee']:,} руб.\n"
+    )
 
     if costs['vat'] > 0:
         output_text += f"\n🔸 {LEXICON_RU['vat']}: {round(costs['vat']):,} руб."
@@ -81,7 +92,10 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
     detailed_output_text += f"🔹 {LEXICON_RU['car_age']}: {data.get('age_category', LEXICON_RU.get(data['year'], data['year']))}\n"
     detailed_output_text += f"🔹 {LEXICON_RU['engine_type_label']}: {LEXICON_RU.get(data['engine_type'], data['engine_type'])}\n"
     detailed_output_text += f"🔹 {LEXICON_RU['car_cost']}: {data['cost']:,} {COUNTRY_CURRENCY_SYMBOL_MAP.get(data['country'], '')}\n"
-    if data.get('volume', 0) > 0:
+    
+    if data['engine_type'] == 'electro' and data.get('power', 0) > 0:
+        detailed_output_text += f"🔹 {LEXICON_RU['power']}: {data['power']} кВт⋅ч\n\n"
+    elif data.get('volume', 0) > 0:
         detailed_output_text += f"🔹 {LEXICON_RU['engine_volume']}: {data.get('volume', 0)} куб. см.\n\n"
     else:
         detailed_output_text += "\n" # Add a newline if engine volume is not displayed, to maintain spacing
@@ -93,6 +107,7 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
 
     detailed_output_text += f"🔸 {LEXICON_RU['customs_clearance']}: {round(costs['customs_clearance']):,} руб.\n"
     detailed_output_text += f"🔸 {LEXICON_RU['recycling_fee']}: {costs['recycling_fee']:,} руб.\n"
+
 
     if data['country'] == 'korea':
         detailed_output_text += f"🔸 {LEXICON_RU['dealer_commission']}: {costs['dealer_commission']:,} руб.\n"
