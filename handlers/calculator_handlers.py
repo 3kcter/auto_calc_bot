@@ -50,7 +50,7 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
     )
     
     if data['engine_type'] == 'electro' and data.get('power', 0) > 0:
-        output_text += f"🔹 {LEXICON_RU['power']}: {data['power']} кВт⋅ч\n\n"
+        output_text += f"🔹 {LEXICON_RU['power']}: {data['power']} кВт\n\n"
     elif data.get('volume', 0) > 0:
         output_text += f"🔹 {LEXICON_RU['engine_volume']}: {data.get('volume', 0)} куб. см.\n\n"
     else:
@@ -94,7 +94,7 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
     detailed_output_text += f"🔹 {LEXICON_RU['car_cost']}: {data['cost']:,} {COUNTRY_CURRENCY_SYMBOL_MAP.get(data['country'], '')}\n"
     
     if data['engine_type'] == 'electro' and data.get('power', 0) > 0:
-        detailed_output_text += f"🔹 {LEXICON_RU['power']}: {data['power']} кВт⋅ч\n\n"
+        detailed_output_text += f"🔹 {LEXICON_RU['power']}: {data['power']} кВт\n\n"
     elif data.get('volume', 0) > 0:
         detailed_output_text += f"🔹 {LEXICON_RU['engine_volume']}: {data.get('volume', 0)} куб. см.\n\n"
     else:
