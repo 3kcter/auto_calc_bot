@@ -286,6 +286,10 @@ def parse_che168_requests(html_content: str) -> tuple[dict, str | None]:
                     # Month is not available in this format, default to 1
                     data['month'] = 1
 
+        if data.get('year') == 1900 and data.get('month') == 1:
+            data['special_message'] = "В объявлении не указан год выпуска автомобиля, невозможно корректно провести расчёт"
+            return data, None
+
         if not data['year']:
              error = "Не удалось найти год."
         logging.info(f"Year parsing result: year={data['year']}, month={data.get('month')}, error={error}")
@@ -294,16 +298,25 @@ def parse_che168_requests(html_content: str) -> tuple[dict, str | None]:
         text_content = soup.get_text()
         logging.info(f"Full text content for engine parsing:\n{text_content}")
 
+        is_hybrid = any(keyword in text_content for keyword in ["混合动力", "油电混合", "插电式混合动力", "插混", "增程式"])
         is_electric = "0L" in text_content or "纯电动" in text_content
+        
+        logging.info(f"Is hybrid check: {is_hybrid}")
         logging.info(f"Is electric check: {is_electric}")
 
-        if is_electric:
-            data['engine_type'] = 'electro'
+        if is_hybrid:
+            data['engine_type'] = 'Гибрид'
+            volume_match = re.search(r'(\d+\.?\d*)\s*L', text_content)
+            if volume_match:
+                data['volume'] = int(float(volume_match.group(1)) * 1000)
+            data['power'] = None
+        elif is_electric:
+            data['engine_type'] = 'Электро'
             data['volume'] = 0
             capacity_match = re.search(r'(\d+\.?\d*)\s*kwh', text_content, re.IGNORECASE)
             logging.info(f"Capacity match: {capacity_match}")
             if capacity_match:
-                data['power'] = float(capacity_match.group(1))
+                data['power'] = int(capacity_match.group(1))
             else:
                 data['power'] = 0
         else:

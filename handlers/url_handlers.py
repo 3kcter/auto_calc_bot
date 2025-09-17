@@ -66,6 +66,11 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
             await processing_message.delete() # Delete processing message
             return
 
+        if car_data and car_data.get('special_message'):
+            await message.answer(car_data['special_message'])
+            await processing_message.delete()
+            return
+
         if error:
             await message.answer(f"Не удалось извлечь все необходимые данные со страницы: {error}. Пожалуйста, попробуйте другую ссылку или воспользуйтесь обычным калькулятором.")
             await processing_message.delete() # Delete processing message
