@@ -48,6 +48,25 @@ def _get_row_from_table(value, table):
             return row
     return table[-1]
 
+def _calculate_excise_tax(power_kw: float) -> float:
+    if power_kw <= 67.5:
+        return 0
+    
+    power_hp = power_kw / 0.75  # Convert kW to hp
+
+    if 67.5 < power_kw <= 112.5:
+        return power_hp * 61
+    elif 112.5 < power_kw <= 150:
+        return power_hp * 583
+    elif 150 < power_kw <= 225:
+        return power_hp * 955
+    elif 225 < power_kw <= 300:
+        return power_hp * 1628
+    elif 300 < power_kw <= 375:
+        return power_hp * 1685
+    else:  # power_kw > 375
+        return power_hp * 1740
+
 def _calculate_customs_payments(age, cost_eur, volume, engine_type):
     if engine_type == 'electro':
         return cost_eur * 0.15
@@ -97,7 +116,7 @@ COUNTRY_CURRENCY_MAP = {
     'korea': 'KRW'
 }
 
-async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_config: CalcConfig, engine_type: str = 'ice', is_from_kazan: str | None = None) -> dict:
+async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_config: CalcConfig, engine_type: str = 'ice', is_from_kazan: str | None = None, power: float = 0) -> dict:
     rates = await get_rates()
     
     currency = COUNTRY_CURRENCY_MAP.get(country)
@@ -114,6 +133,10 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
 
     recycling_fee = _calculate_recycling_fee(age, volume, engine_type)
     customs_clearance = _calculate_customs_clearance(cost_rub)
+
+    excise_tax = 0
+    if engine_type == 'electro':
+        excise_tax = _calculate_excise_tax(power)
 
     # Initialize all possible costs to 0
     dealer_commission = 0
@@ -153,7 +176,7 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
         cost_rub + dealer_commission + customs_payments + recycling_fee +
         customs_clearance + china_documents_delivery + logistics_cost + lab_svh_cost +
         korea_inland_transport + korea_port_transport_loading + vladivostok_expenses +
-        logistics_vladivostok_kazan + car_preparation + other_expenses
+        logistics_vladivostok_kazan + car_preparation + other_expenses + excise_tax
     )
 
     vat = 0
@@ -180,6 +203,7 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
         "logistics_vladivostok_kazan": logistics_vladivostok_kazan,
         "car_preparation": car_preparation,
         "other_expenses": other_expenses,
+        "excise_tax": excise_tax,
         "vat": vat,
         "total_cost": total_cost_original_currency,
         "total_cost_rub": total_cost_rub,

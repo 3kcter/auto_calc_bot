@@ -78,7 +78,17 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
                 await message.bot.send_message(admin_id, f"Ошибка парсинга URL: {url}\n{error}")
             return
 
-        if car_data and all(car_data.get(k) is not None for k in ['year', 'cost', 'volume']):
+        if car_data and car_data.get('year') is not None and car_data.get('cost') is not None:
+            if car_data.get('engine_type') == 'electro':
+                if not car_data.get('power'):
+                    await message.answer("Не удалось извлечь мощность для электромобиля. Пожалуйста, попробуйте другую ссылку или воспользуйтесь обычным калькулятором.")
+                    await processing_message.delete()
+                    return
+            elif car_data.get('volume') is None:
+                 await message.answer("Не удалось извлечь объем двигателя. Пожалуйста, попробуйте другую ссылку или воспользуйтесь обычным калькулятором.")
+                 await processing_message.delete()
+                 return
+
             # Apply age categorization if year is available from parser
             if car_data.get('year') is not None:
                 age_val = get_age_category_val(car_data['year'], car_data.get('month', 1))

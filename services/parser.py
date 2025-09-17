@@ -138,9 +138,9 @@ def parse_encar_selenium(url: str) -> tuple[dict, str | None]:
                 if fuel_type_from_preloaded:
                     normalized_fuel_type = fuel_type_from_preloaded.lower()
                     if "diesel" in normalized_fuel_type or "gasoline" in normalized_fuel_type or "디젤" in normalized_fuel_type or "가솔린" in normalized_fuel_type: # Added Korean terms
-                        data['engine_type'] = 'ДВС'
+                        data['engine_type'] = 'ice'
                     elif "electro" in normalized_fuel_type or "전기" in normalized_fuel_type: # Added Korean term
-                        data['engine_type'] = 'Электро'
+                        data['engine_type'] = 'electro'
                     else:
                         data['engine_type'] = fuel_type_from_preloaded # Keep original if not matched
                         logging.debug(f"Unmatched fuel type from preloaded state: {fuel_type_from_preloaded}")
@@ -197,9 +197,9 @@ def parse_encar_selenium(url: str) -> tuple[dict, str | None]:
                     if '연료' in title and not data['engine_type']:
                         normalized_fuel_type = value.lower()
                         if "diesel" in normalized_fuel_type or "gasoline" in normalized_fuel_type or "디젤" in normalized_fuel_type or "가솔린" in normalized_fuel_type: # Added Korean terms
-                            data['engine_type'] = 'ДВС'
+                            data['engine_type'] = 'ice'
                         elif "electro" in normalized_fuel_type or "전기" in normalized_fuel_type: # Added Korean term
-                            data['engine_type'] = 'Электро'
+                            data['engine_type'] = 'electro'
                         else:
                             data['engine_type'] = value # Keep original if not matched
                             logging.debug(f"Unmatched fuel type from Selenium scraping: {value}")
@@ -305,22 +305,23 @@ def parse_che168_requests(html_content: str) -> tuple[dict, str | None]:
         logging.info(f"Is electric check: {is_electric}")
 
         if is_hybrid:
-            data['engine_type'] = 'Гибрид'
+            data['engine_type'] = 'ice'
             volume_match = re.search(r'(\d+\.?\d*)\s*L', text_content)
             if volume_match:
                 data['volume'] = int(float(volume_match.group(1)) * 1000)
             data['power'] = None
         elif is_electric:
-            data['engine_type'] = 'Электро'
+            data['engine_type'] = 'electro'
             data['volume'] = 0
-            capacity_match = re.search(r'(\d+\.?\d*)\s*kwh', text_content, re.IGNORECASE)
-            logging.info(f"Capacity match: {capacity_match}")
-            if capacity_match:
-                data['power'] = int(capacity_match.group(1))
+            # Search for power in kW, e.g., "150kW"
+            power_match = re.search(r'(\d+)\s*kW', text_content, re.IGNORECASE)
+            if power_match:
+                data['power'] = int(power_match.group(1))
             else:
+                # Fallback or error handling if power is not found
                 data['power'] = 0
         else:
-            data['engine_type'] = 'ДВС'
+            data['engine_type'] = 'ice'
             data['power'] = None
             volume_match = re.search(r'(\d+\.?\d*)\s*L', text_content)
             logging.info(f"Volume match: {volume_match}")
