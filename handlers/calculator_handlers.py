@@ -1,4 +1,5 @@
 from aiogram import F, Router
+import re
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -9,7 +10,7 @@ from lexicon.lexicon import LEXICON_RU
 from keyboards.keyboards import (
     create_year_keyboard, create_cost_keyboard, create_volume_keyboard,
     create_country_keyboard, create_after_calculation_keyboard,
-    create_engine_type_keyboard, create_kazan_question_keyboard
+    create_engine_type_keyboard, create_kazan_question_keyboard, create_hybrid_type_keyboard
 )
 from services.calculator import calculate_cost
 from services.menu_utils import send_start_menu
@@ -20,6 +21,7 @@ calculator_router = Router()
 class CalculatorFSM(StatesGroup):
     year = State()
     engine_type = State()
+    hybrid_type = State()
     country = State()
     is_from_kazan = State()
     cost = State()
@@ -39,7 +41,11 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
     costs = await calculate_cost(data['year'], data['cost'], data['country'], data.get('volume', 0), calc_config, data['engine_type'], data.get('is_from_kazan'), data.get('power', 0))
     
     year_display_text = data.get('age_category', LEXICON_RU.get(data['year'], data['year']))
+    
     engine_type_text = LEXICON_RU.get(data['engine_type'], data['engine_type'])
+    if data.get('hybrid_type'):
+        engine_type_text = LEXICON_RU.get(data['hybrid_type'], data['hybrid_type'])
+
 
     currency_symbol = COUNTRY_CURRENCY_SYMBOL_MAP.get(data['country'], '')
 
@@ -50,8 +56,8 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
         f"🔹 {LEXICON_RU['car_cost']}: {data['cost']:,} {currency_symbol}\n"
     )
     
-    if data['engine_type'] == 'electro' and data.get('power', 0) > 0:
-        output_text += f"🔹 {LEXICON_RU['power']}: {data['power']} кВт\n\n"
+    if (data['engine_type'] == 'electro' or data.get('hybrid_type') == 'sequential_hybrid') and data.get('power_display', 0) > 0:
+        output_text += f"🔹 {LEXICON_RU['power']}: {data['power_display']} {data['power_unit']}\n\n"
     elif data.get('volume', 0) > 0:
         output_text += f"🔹 {LEXICON_RU['engine_volume']}: {data.get('volume', 0)} куб. см.\n\n"
     else:
@@ -84,6 +90,7 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
     )
     await state.set_state(CalculatorFSM.result)
 
+
 @calculator_router.callback_query(F.data == 'detailed_calculation', StateFilter(CalculatorFSM.result))
 async def process_detailed_calculation_press(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
@@ -92,11 +99,14 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
 
     detailed_output_text = f"{LEXICON_RU['calculation_params']}:\n"
     detailed_output_text += f"🔹 {LEXICON_RU['car_age']}: {data.get('age_category', LEXICON_RU.get(data['year'], data['year']))}\n"
-    detailed_output_text += f"🔹 {LEXICON_RU['engine_type_label']}: {LEXICON_RU.get(data['engine_type'], data['engine_type'])}\n"
+    engine_type_text = LEXICON_RU.get(data['engine_type'], data['engine_type'])
+    if data.get('hybrid_type'):
+        engine_type_text = LEXICON_RU.get(data['hybrid_type'], data['hybrid_type'])
+    detailed_output_text += f"🔹 {LEXICON_RU['engine_type_label']}: {engine_type_text}\n"
     detailed_output_text += f"🔹 {LEXICON_RU['car_cost']}: {data['cost']:,} {COUNTRY_CURRENCY_SYMBOL_MAP.get(data['country'], '')}\n"
     
-    if data['engine_type'] == 'electro' and data.get('power', 0) > 0:
-        detailed_output_text += f"🔹 {LEXICON_RU['power']}: {data['power']} кВт\n\n"
+    if (data['engine_type'] == 'electro' or data.get('hybrid_type') == 'sequential_hybrid') and data.get('power_display', 0) > 0:
+        detailed_output_text += f"🔹 {LEXICON_RU['power']}: {data['power_display']} {data['power_unit']}\n\n"
     elif data.get('volume', 0) > 0:
         detailed_output_text += f"🔹 {LEXICON_RU['engine_volume']}: {data.get('volume', 0)} куб. см.\n\n"
     else:
@@ -140,6 +150,7 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
     await callback.answer()
 
 
+
 @calculator_router.callback_query(F.data == 'calculator')
 async def process_calculator_press(callback: CallbackQuery, state: FSMContext):
     await callback.message.delete()
@@ -161,6 +172,9 @@ async def process_back_press(callback: CallbackQuery, state: FSMContext):
     elif current_state == CalculatorFSM.engine_type:
         await callback.message.edit_text(text=LEXICON_RU['select_year'], reply_markup=create_year_keyboard())
         await state.set_state(CalculatorFSM.year)
+    elif current_state == CalculatorFSM.hybrid_type:
+        await callback.message.edit_text(text=f"{LEXICON_RU['select_engine_type']}\n\n{LEXICON_RU['hybrid_info']}", reply_markup=create_engine_type_keyboard())
+        await state.set_state(CalculatorFSM.engine_type)
     elif current_state == CalculatorFSM.country:
         await callback.message.edit_text(text=f"{LEXICON_RU['select_engine_type']}\n\n{LEXICON_RU['hybrid_info']}", reply_markup=create_engine_type_keyboard())
         await state.set_state(CalculatorFSM.engine_type)
@@ -168,11 +182,15 @@ async def process_back_press(callback: CallbackQuery, state: FSMContext):
         await callback.message.edit_text(text=LEXICON_RU['select_country'], reply_markup=create_country_keyboard())
         await state.set_state(CalculatorFSM.country)
     elif current_state == CalculatorFSM.power:
-        await callback.message.edit_text(text=LEXICON_RU['select_country'], reply_markup=create_country_keyboard())
-        await state.set_state(CalculatorFSM.country)
+        if data.get('hybrid_type') == 'sequential_hybrid':
+            await callback.message.edit_text(text=LEXICON_RU['select_hybrid_type'], reply_markup=create_hybrid_type_keyboard())
+            await state.set_state(CalculatorFSM.hybrid_type)
+        else:
+            await callback.message.edit_text(text=LEXICON_RU['select_country'], reply_markup=create_country_keyboard())
+            await state.set_state(CalculatorFSM.country)
     elif current_state == CalculatorFSM.cost:
-        if data.get('engine_type') == 'electro':
-            await callback.message.edit_text(text=LEXICON_RU['select_power'], reply_markup=create_cost_keyboard())
+        if data.get('engine_type') == 'electro' or data.get('hybrid_type') == 'sequential_hybrid':
+            await callback.message.edit_text(text=LEXICON_RU['enter_power'], reply_markup=create_cost_keyboard())
             await state.set_state(CalculatorFSM.power)
         else:
             await callback.message.edit_text(text=LEXICON_RU['select_volume'], reply_markup=create_volume_keyboard())
@@ -196,13 +214,36 @@ async def process_year_sent(callback: CallbackQuery, state: FSMContext):
 
 @calculator_router.callback_query(StateFilter(CalculatorFSM.engine_type))
 async def process_engine_type_press(callback: CallbackQuery, state: FSMContext):
-    await state.update_data(engine_type=callback.data)
+    engine_type = callback.data
+    await state.update_data(engine_type=engine_type)
+    if engine_type == 'hybrid':
+        await callback.message.edit_text(
+            text=LEXICON_RU['select_hybrid_type'],
+            reply_markup=create_hybrid_type_keyboard()
+        )
+        await state.set_state(CalculatorFSM.hybrid_type)
+    else:
+        await callback.message.edit_text(
+            text=LEXICON_RU['select_country'],
+            reply_markup=create_country_keyboard()
+        )
+        await state.set_state(CalculatorFSM.country)
+    await callback.answer()
+
+@calculator_router.callback_query(StateFilter(CalculatorFSM.hybrid_type))
+async def process_hybrid_type_press(callback: CallbackQuery, state: FSMContext):
+    hybrid_type = callback.data
+    await state.update_data(hybrid_type=hybrid_type)
+    if hybrid_type == 'sequential_hybrid':
+        await state.update_data(engine_type='electro')
+    else:
+        await state.update_data(engine_type='ice')
     await callback.message.edit_text(
         text=LEXICON_RU['select_country'],
         reply_markup=create_country_keyboard()
     )
-    await callback.answer()
     await state.set_state(CalculatorFSM.country)
+    await callback.answer()
 
 COUNTRY_CURRENCY_MAP = {
     'china': 'юанях',
@@ -215,9 +256,9 @@ async def process_country_sent(callback: CallbackQuery, state: FSMContext):
     await state.update_data(country=country)
     data = await state.get_data()
 
-    if data['engine_type'] == 'electro':
+    if data['engine_type'] == 'electro' or data.get('hybrid_type') == 'sequential_hybrid':
         await callback.message.edit_text(
-            text=LEXICON_RU['select_power'],
+            text=LEXICON_RU['enter_power'],
             reply_markup=create_cost_keyboard() # Reuse cost keyboard for back button
         )
         await state.update_data(prompt_message_id=callback.message.message_id)
@@ -257,10 +298,20 @@ async def process_power_sent(message: Message, state: FSMContext):
     data = await state.get_data()
     prompt_message_id = data.get('prompt_message_id')
 
-    power_text = message.text.replace(',', '.')
+    power_text = message.text.lower().replace(',', '.')
+    power_value = None
+    power_unit = 'кВт'
     try:
-        power_value = float(power_text)
-        await state.update_data(power=power_value)
+        if 'л.с' in power_text or 'лс' in power_text or 'hp' in power_text:
+            power_hp = float(re.sub(r'[^0-9.]', '', power_text))
+            power_value = power_hp * 0.7355
+            power_unit = 'л.с.'
+            await state.update_data(power_display=power_hp)
+        else:
+            power_value = float(re.sub(r'[^0-9.]', '', power_text))
+            await state.update_data(power_display=power_value)
+
+        await state.update_data(power=power_value, power_unit=power_unit)
         data = await state.get_data() # re-get data
         
         currency_text = COUNTRY_CURRENCY_MAP.get(data['country'], '')
@@ -280,7 +331,7 @@ async def process_power_sent(message: Message, state: FSMContext):
             await state.update_data(prompt_message_id=sent_message.message_id)
 
         await state.set_state(CalculatorFSM.cost)
-    except ValueError:
+    except (ValueError, TypeError):
         if prompt_message_id:
             await message.bot.edit_message_text(
                 text=LEXICON_RU['not_a_number'],

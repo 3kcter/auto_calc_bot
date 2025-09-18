@@ -76,7 +76,20 @@ def create_engine_type_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text=LEXICON_RU['ice'], callback_data='ice'),
+        InlineKeyboardButton(text=LEXICON_RU['hybrid'], callback_data='hybrid'),
         InlineKeyboardButton(text=LEXICON_RU['electro'], callback_data='electro')
+    )
+    builder.row(
+        InlineKeyboardButton(text=LEXICON_RU['back'], callback_data='back'),
+        InlineKeyboardButton(text=LEXICON_RU['exit'], callback_data='exit')
+    )
+    return builder.as_markup()
+
+def create_hybrid_type_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text=LEXICON_RU['parallel_hybrid'], callback_data='parallel_hybrid'),
+        InlineKeyboardButton(text=LEXICON_RU['sequential_hybrid'], callback_data='sequential_hybrid')
     )
     builder.row(
         InlineKeyboardButton(text=LEXICON_RU['back'], callback_data='back'),

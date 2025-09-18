@@ -85,6 +85,8 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
                     await message.answer("Не удалось извлечь мощность для электромобиля. Пожалуйста, попробуйте другую ссылку или воспользуйтесь обычным калькулятором.")
                     await processing_message.delete()
                     return
+                car_data['power_display'] = car_data['power']
+                car_data['power_unit'] = 'кВт'
             elif car_data.get('volume') is None:
                  await message.answer("Не удалось извлечь объем двигателя. Пожалуйста, попробуйте другую ссылку или воспользуйтесь обычным калькулятором.")
                  await processing_message.delete()
@@ -116,3 +118,4 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
         await processing_message.delete() # Delete processing message
         for admin_id in config.bot.admin_ids:
             await message.bot.send_message(admin_id, f"Произошла ошибка при обработке ссылки: {url}\n{e}")
+
