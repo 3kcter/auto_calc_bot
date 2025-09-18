@@ -54,9 +54,10 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
         car_data = None
         error = None
 
-        if 'encar.com' in url:
-            car_data, error = parse_encar_requests(url)
-        elif 'che168.com' in url:
+        #if 'encar.com' in url:
+            
+            #car_data, error = parse_encar_requests(url)
+        if 'che168.com' in url:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as response:
                     if response.status == 200:
@@ -65,7 +66,7 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
                     else:
                         error = f"Failed to load page, status: {response.status}"
         else:
-            await message.answer("Пожалуйста, отправьте ссылку на сайт encar.com или che168.com")
+            await message.answer("Пожалуйста, отправьте ссылку на сайт che168.com")
             await processing_message.delete()
             return
 

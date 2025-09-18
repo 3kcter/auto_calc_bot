@@ -71,153 +71,90 @@ def _parse_encar_preloaded_state(html_content: str) -> tuple[dict, str | None]:
 def parse_encar_selenium(url: str) -> tuple[dict, str | None]:
     logging.info(f"Starting to parse encar.com data using Selenium for URL: {url}")
     data = {
-        'year': None,
-        'cost': None,
-        'currency': 'KRW',
-        'volume': None,
-        'engine_type': None,
-        'power': None,
-        'country': 'korea'
+        'car_name': None, 'year': None, 'month': None, 'mileage': None, 'cost': None,
+        'currency': 'KRW', 'volume': None, 'power': None, 'power_unit': None,
+        'country': 'korea', 'engine_type': None
     }
     error = None
     driver = None
 
     try:
-        # Setup Chrome options for headless browsing
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
-        options.add_argument('--disable-gpu') # Applicable to Windows as well
-        options.add_argument('--window-size=1920,1080') # Set a common window size
+        options.add_argument('--disable-gpu')
+        options.add_argument('--window-size=1920,1080')
 
-        # Initialize WebDriver
-        # Using ChromeDriverManager to automatically download and manage ChromeDriver
         driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
         driver.get(url)
 
-        # --- CAPTCHA Handling Placeholder ---
-        # If a CAPTCHA is detected, this is where you would implement logic to handle it.
-        # This might involve waiting for user input, using a CAPTCHA solving service,
-        # or more advanced techniques. Direct CAPTCHA solving is beyond the scope
-        # of this automated refactoring.
-        # Example: if "captcha" in driver.page_source.lower():
-        #     error = "CAPTCHA detected. Manual intervention or CAPTCHA solving service required."
-        #     return data, error
-        # --- End CAPTCHA Handling Placeholder ---
-
-        # Wait for the body element to be present, which is more generic.
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.TAG_NAME, 'body'))
         )
 
-        # Attempt to extract from __PRELOADED_STATE__ first, as it's often more reliable
-        # This requires executing JavaScript in the browser context
-        preloaded_state_script = "return window.__PRELOADED_STATE__;"
-        preloaded_state = driver.execute_script(preloaded_state_script)
+        preloaded_state = driver.execute_script("return window.__PRELOADED_STATE__;")
 
         if preloaded_state:
-            logging.debug(f"Preloaded state: {preloaded_state}")
+            logging.info("Found __PRELOADED_STATE__. Parsing data from it.")
             car_info = preloaded_state.get('cars', {}).get('base', {})
             if car_info:
-                logging.debug(f"Car info from preloaded state: {car_info}")
-                year_str = car_info.get('category', {}).get('formYear')
-                if year_str:
+                data['car_name'] = car_info.get('gallery', {}).get('title')
+
+                category_info = car_info.get('category', {})
+                if category_info:
+                    data['year'] = category_info.get('formYear')
+                    data['month'] = category_info.get('formMonth')
+
+                advertisement_info = car_info.get('advertisement', {})
+                if advertisement_info and advertisement_info.get('price'):
                     try:
-                        data['year'] = int(year_str)
-                    except ValueError:
-                        logging.warning(f"Could not convert year '{year_str}' to int in preloaded state (Selenium).")
-                price = car_info.get('advertisement', {}).get('price')
-                if price:
-                    try:
-                        data['cost'] = int(price) * 10000
-                    except ValueError:
-                        logging.warning(f"Could not convert price '{price}' to int in preloaded state (Selenium).")
-                data['volume'] = car_info.get('spec', {}).get('displacement')
-                fuel_type_from_preloaded = car_info.get('spec', {}).get('fuelName') # Changed from 'fuelType' to 'fuelName'
-                if fuel_type_from_preloaded:
-                    normalized_fuel_type = fuel_type_from_preloaded.lower()
-                    if "diesel" in normalized_fuel_type or "gasoline" in normalized_fuel_type or "디젤" in normalized_fuel_type or "가솔린" in normalized_fuel_type: # Added Korean terms
-                        data['engine_type'] = 'ice'
-                    elif "electro" in normalized_fuel_type or "전기" in normalized_fuel_type: # Added Korean term
+                        data['cost'] = int(advertisement_info['price']) * 10000
+                    except (ValueError, TypeError):
+                        logging.warning(f"Could not parse price from preloaded state: {advertisement_info['price']}")
+                
+                mileage_info = car_info.get('mileage', {})
+                if mileage_info:
+                    data['mileage'] = mileage_info.get('mileage')
+
+                spec_info = car_info.get('spec', {})
+                performance_info = car_info.get('performance', {})
+
+                if spec_info:
+                    fuel_type = spec_info.get('fuelName', '').lower()
+                    if '전기' in fuel_type:
                         data['engine_type'] = 'electro'
+                        data['volume'] = 0
+                        power_kw = spec_info.get('standardCapacity') 
+                        if power_kw:
+                            data['power'] = power_kw
+                            data['power_unit'] = 'кВт'
                     else:
-                        data['engine_type'] = fuel_type_from_preloaded # Keep original if not matched
-                        logging.debug(f"Unmatched fuel type from preloaded state: {fuel_type_from_preloaded}")
-                # Power might still need to be scraped from HTML if not in preloaded state
+                        data['engine_type'] = 'ice'
+                        data['volume'] = spec_info.get('displacement')
+
+                if not data.get('power') and performance_info:
+                    power_hp = performance_info.get('power')
+                    if power_hp:
+                        data['power_display'] = power_hp
+                        data['power'] = power_hp * 0.7355 # Convert HP to kW
+                        data['power_unit'] = 'л.с.'
+
+                if not data['engine_type']:
+                    if data.get('volume', 0) > 0:
+                        data['engine_type'] = 'ice'
+                    elif data.get('power', 0) > 0:
+                        data['engine_type'] = 'electro'
+            else:
+                error = "Could not find 'base' info in __PRELOADED_STATE__"
         else:
-            logging.warning("Could not find __PRELOADED_STATE__ using Selenium. Falling back to BeautifulSoup-like scraping.")
+            error = "Could not find __PRELOADED_STATE__ in page."
+            logging.warning(error)
 
-        # If data is still missing, or if __PRELOADED_STATE__ wasn't found,
-        # fall back to scraping from the rendered HTML using Selenium's element finders.
-        # This part will be similar to the BeautifulSoup logic but using Selenium methods.
-        if not all(data.get(k) for k in ['year', 'cost', 'volume']):
-            logging.info("Attempting to parse encar.com data with Selenium element finders.")
-
-            # Year
-            try:
-                year_element = driver.find_element(By.CLASS_NAME, 'year')
-                year_match = re.search(r'(\d{4})', year_element.text)
-                if year_match:
-                    try:
-                        data['year'] = int(year_match.group(1))
-                    except ValueError:
-                        logging.warning(f"Could not convert year '{year_match.group(1)}' to int.")
-            except Exception as e:
-                logging.debug(f"Could not find year with Selenium: {e}")
-
-            # Cost
-            try:
-                price_element = driver.find_element(By.CLASS_NAME, 'info_price')
-                price_text = price_element.text.replace(',', '').strip()
-                price_match = re.search(r'(\d+)', price_text)
-                if price_match:
-                    try:
-                        data['cost'] = int(price_match.group(1)) * 10000
-                    except ValueError:
-                        logging.warning(f"Could not convert cost '{price_match.group(1)}' to int.")
-            except Exception as e:
-                logging.debug(f"Could not find cost with Selenium: {e}")
-
-            # Volume, Engine Type, Power
-            spec_items = driver.find_elements(By.CLASS_NAME, 'spec_item')
-            for item in spec_items:
-                try:
-                    title = item.find_element(By.CLASS_NAME, 'tit').text.strip()
-                    value = item.find_element(By.CLASS_NAME, 'txt').text.strip()
-
-                    if '배기량' in title and not data['volume']:
-                        volume_match = re.search(r'(\d+)', value)
-                        if volume_match:
-                            try:
-                                data['volume'] = int(volume_match.group(1))
-                            except ValueError:
-                                logging.warning(f"Could not convert volume '{volume_match.group(1)}' to int.")
-
-                    if '연료' in title and not data['engine_type']:
-                        normalized_fuel_type = value.lower()
-                        if "diesel" in normalized_fuel_type or "gasoline" in normalized_fuel_type or "디젤" in normalized_fuel_type or "가솔린" in normalized_fuel_type: # Added Korean terms
-                            data['engine_type'] = 'ice'
-                        elif "electro" in normalized_fuel_type or "전기" in normalized_fuel_type: # Added Korean term
-                            data['engine_type'] = 'electro'
-                        else:
-                            data['engine_type'] = value # Keep original if not matched
-                            logging.debug(f"Unmatched fuel type from Selenium scraping: {value}")
-
-                    if '최고출력' in title and not data['power']:
-                        power_match = re.search(r'(\d+)', value)
-                        if power_match:
-                            try:
-                                data['power'] = int(power_match.group(1))
-                            except ValueError:
-                                logging.warning(f"Could not convert power '{power_match.group(1)}' to int.")
-                except Exception as e:
-                    logging.debug(f"Error parsing spec item with Selenium: {e}")
-
-        if not all(data.get(k) for k in ['year', 'cost', 'volume']):
-            error = error if error else "Не удалось полностью спарсить данные с encar.com с помощью Selenium."
-            if driver:
-                logging.error(f"Page source on error: {driver.page_source}")
+        if not all(data.get(k) for k in ['year', 'cost', 'volume', 'car_name', 'mileage', 'power']):
+            if not error:
+                error = "Не удалось извлечь все данные из __PRELOADED_STATE__."
+            logging.error(f"Failed to parse all required data from encar.com. Data: {data}")
 
     except Exception as e:
         error = f"Произошла непредвиденная ошибка при парсинге encar.com с помощью Selenium: {e}"
@@ -274,7 +211,7 @@ def parse_che168_requests(html_content: str) -> tuple[dict, str | None]:
     logging.info("Starting to parse che168.com data using hidden inputs and heuristics.")
     data = {
         'car_name': None, 'year': None, 'month': None, 'mileage': None, 'cost': None,
-        'currency': 'CNY', 'volume': None, 'power': None, 'power_unit': 'кВт', # Default to kW
+        'currency': 'CNY', 'volume': None, 'power': None, 'power_unit': 'кВт',
         'country': 'china', 'engine_type': None
     }
     error = None
@@ -286,8 +223,8 @@ def parse_che168_requests(html_content: str) -> tuple[dict, str | None]:
             input_tag = soup.find('input', {'id': input_id})
             return input_tag.get('value') if input_tag else None
 
+        # --- Get data from hidden inputs ---
         data['car_name'] = get_input_val('car_carname')
-        
         reg_time = get_input_val('car_firstregtime')
         if reg_time:
             try:
@@ -296,41 +233,65 @@ def parse_che168_requests(html_content: str) -> tuple[dict, str | None]:
                 data['month'] = int(month)
             except (ValueError, IndexError):
                 logging.warning(f"Could not parse car_firstregtime: {reg_time}")
-
         mileage_val = get_input_val('car_mileage')
         if mileage_val:
             try:
                 data['mileage'] = int(float(mileage_val) * 10000)
             except (ValueError, TypeError):
                 logging.warning(f"Could not parse car_mileage: {mileage_val}")
-
         price_val = get_input_val('car_price')
         if price_val:
             try:
-                # Value is in 万 (10,000)
                 data['cost'] = int(float(price_val) * 10000)
             except (ValueError, TypeError):
                 logging.warning(f"Could not parse car_price: {price_val}")
 
-        # --- Power and Volume from visible text ---
-        all_lis = soup.find_all('li')
-        for li in all_lis:
-            text = li.text
-            if ('T' in text or 'L' in text) and (re.search(r'V\d', text) or re.search(r'\d{3}', text)):
-                power_match = re.search(r'(\d{3,})', text)
+        # --- Determine Engine Type and get specs ---
+        text_content = soup.get_text()
+        is_electric = "纯电动" in text_content
+
+        if is_electric:
+            data['engine_type'] = 'electro'
+            data['volume'] = 0
+            data['power_unit'] = 'кВт'
+            # Try to find power in the spec table first
+            power_text = _find_spec_value(soup, '最大功率(kW)')
+            if power_text:
+                power_match = re.search(r'(\d+)', power_text)
                 if power_match:
                     data['power'] = int(power_match.group(1))
-                    data['power_unit'] = 'л.с.' # Horsepower
-                
-                volume_match = re.search(r'(\d\.\d)[TL]?', text)
-                if volume_match:
-                    data['volume'] = int(float(volume_match.group(1)) * 1000)
-                
-                if data['power'] and data['volume']:
-                    break
-        
-        if data.get('power'):
+            # Fallback to regex search in the whole text
+            if not data['power']:
+                power_match = re.search(r'(\d+)\s*kW', text_content, re.IGNORECASE)
+                if power_match:
+                    data['power'] = int(power_match.group(1))
+        else:
             data['engine_type'] = 'ice'
+            # --- Power and Volume for ICE from visible text ---
+            all_lis = soup.find_all('li')
+            for li in all_lis:
+                text = li.text
+                if ('T' in text or 'L' in text) and (re.search(r'V\d', text) or re.search(r'\d{3}', text)):
+                    power_match = re.search(r'(\d{3,})', text)
+                    if power_match:
+                        data['power'] = int(power_match.group(1))
+                        data['power_unit'] = 'л.с.'
+                    
+                    volume_match = re.search(r'(\d\.\d)[TL]?', text)
+                    if volume_match:
+                        data['volume'] = int(float(volume_match.group(1)) * 1000)
+                    
+                    if data['power'] and data['volume']:
+                        break
+            # Fallback for volume if not found in engine string
+            if not data['volume']:
+                volume_text = _find_spec_value(soup, '排量(L)')
+                if volume_text:
+                    try:
+                        data['volume'] = 0 if volume_text == '-' else int(float(volume_text) * 1000)
+                    except (ValueError, TypeError):
+                        logging.warning(f"Could not parse volume from {volume_text}")
+
 
     except Exception as e:
         error = f"Произошла непредвиденная ошибка при парсинге che168.com: {e}"
