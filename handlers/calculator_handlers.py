@@ -188,7 +188,8 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
         additional_expenses_lines.append(f"📎 **Прочие расходы:** {round(costs['other_expenses']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
 
     if costs.get('delivery_to_region_cost', 0) > 0:
-        additional_expenses_lines.append(f"✈️ **Доставка в регион:** {round(costs['delivery_to_region_cost']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
+        label = LEXICON_RU['lab_svh_not_kazan_rub']
+        additional_expenses_lines.append(f"🔬 **{label}:** {round(costs['delivery_to_region_cost']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
     
     additional_expenses_section = "\n".join(additional_expenses_lines)
     country_name = "Корея" if data['country'] == 'korea' else "Китай"

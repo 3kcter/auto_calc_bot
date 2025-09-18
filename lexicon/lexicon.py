@@ -81,7 +81,7 @@ LEXICON_RU: dict[str, str| dict[str, str]] = {
     'vladivostok_expenses': 'Расходы по Владивостоку',
     'logistics_vladivostok_kazan': 'Логистика от Владивостока до Казани',
     'car_preparation': 'Подготовка авто к выдаче',
-    'delivery_to_region': 'Доставка в регион',
+    'lab_svh_not_kazan_rub': 'Лаборатория и СВХ не Казань(RUB)',
     'calc_config_fields': {
         'china': {
             'dealer_commission': 'Комиссия дилера в Китае(RUB)',
