@@ -51,6 +51,9 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
     processing_message = await message.answer(LEXICON_RU['processing_url'])
 
     try:
+        car_data = None
+        error = None
+
         if 'encar.com' in url:
             car_data, error = parse_encar_requests(url)
         elif 'che168.com' in url:
@@ -61,25 +64,25 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
                         car_data, error = parse_che168_requests(html_content)
                     else:
                         error = f"Failed to load page, status: {response.status}"
-                        car_data = None
         else:
             await message.answer("Пожалуйста, отправьте ссылку на сайт encar.com или che168.com")
-            await processing_message.delete() # Delete processing message
+            await processing_message.delete()
             return
 
         if car_data and car_data.get('special_message'):
             await message.answer(car_data['special_message'])
             await processing_message.delete()
+            await state.clear()
             return
 
         if error:
             await message.answer(f"Не удалось извлечь все необходимые данные со страницы: {error}. Пожалуйста, попробуйте другую ссылку или воспользуйтесь обычным калькулятором.")
-            await processing_message.delete() # Delete processing message
+            await processing_message.delete()
             for admin_id in config.bot.admin_ids:
                 await message.bot.send_message(admin_id, f"Ошибка парсинга URL: {url}\n{error}")
             return
 
-        if car_data and car_data.get('year') is not None and car_data.get('cost') is not None:
+        if car_data and car_data.get('year') is not None and (car_data.get('cost') is not None or 'che168.com' in url):
             if car_data.get('engine_type') == 'electro':
                 if not car_data.get('power'):
                     await message.answer("Не удалось извлечь мощность для электромобиля. Пожалуйста, попробуйте другую ссылку или воспользуйтесь обычным калькулятором.")
@@ -92,15 +95,14 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
                  await processing_message.delete()
                  return
 
-            # Apply age categorization if year is available from parser
             if car_data.get('year') is not None:
+                car_data['original_year'] = car_data['year'] # Save original year
                 age_val = get_age_category_val(car_data['year'], car_data.get('month', 1))
-                car_data['year'] = age_val
+                car_data['year'] = age_val # Overwrite with category for the calculator
                 car_data['age_category'] = get_age_category_display(age_val)
             
             await state.update_data(**car_data)
 
-            # Ask if the user is from Kazan
             sent_message = await message.answer(
                 text=LEXICON_RU['is_from_kazan_question'],
                 reply_markup=create_kazan_question_url_keyboard()
@@ -108,14 +110,14 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
             await state.update_data(prompt_message_id=sent_message.message_id)
             await state.set_state(CalculatorFSM.is_from_kazan)
 
-            await processing_message.delete() # Delete processing message
+            await processing_message.delete()
         else:
             await message.answer("Не удалось извлечь все необходимые данные со страницы. Пожалуйста, попробуйте другую ссылку или воспользуйтесь обычным калькулятором.")
-            await processing_message.delete() # Delete processing message
+            await processing_message.delete()
 
     except Exception as e:
         await message.answer(f"Произошла ошибка при обработке ссылки.")
-        await processing_message.delete() # Delete processing message
+        await processing_message.delete()
         for admin_id in config.bot.admin_ids:
             await message.bot.send_message(admin_id, f"Произошла ошибка при обработке ссылки: {url}\n{e}")
 

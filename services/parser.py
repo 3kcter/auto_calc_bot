@@ -230,6 +230,37 @@ def parse_encar_selenium(url: str) -> tuple[dict, str | None]:
     logging.info(f"Final error state for encar.com (Selenium): {error}")
     return data, error
 
+def _find_spec_value(soup: BeautifulSoup, label_text: str) -> str | None:
+    """Finds a spec value based on its label text."""
+    try:
+        label_tag = soup.find(lambda tag: tag.name and label_text in tag.text)
+        if not label_tag:
+            return None
+        
+        # Common pattern: <li><span>Label</span><p>Value</p></li>
+        parent_li = label_tag.find_parent('li')
+        if parent_li:
+            value_tag = parent_li.find('p')
+            if value_tag:
+                return value_tag.text.strip()
+
+        # Common pattern: <td>Label</td><td>Value</td>
+        parent_td = label_tag.find_parent('td')
+        if parent_td:
+            next_td = parent_td.find_next_sibling('td')
+            if next_td:
+                return next_td.text.strip()
+        
+        # Fallback for less structured data
+        parent = label_tag.parent
+        value_tag = parent.find(['p', 'span', 'div'], class_=lambda x: x != 'label')
+        if value_tag:
+            return value_tag.text.strip()
+
+    except Exception:
+        return None
+    return None
+
 def parse_encar_requests(url: str) -> tuple[dict, str | None]:
     """
     Парсит данные об автомобиле с encar.com с использованием Selenium.
@@ -238,101 +269,68 @@ def parse_encar_requests(url: str) -> tuple[dict, str | None]:
 
 def parse_che168_requests(html_content: str) -> tuple[dict, str | None]:
     """
-    Парсит данные об автомобиле с che168.com с использованием BeautifulSoup.
+    Парсит данные об автомобиле с che168.com, используя скрытые поля ввода и эвристики для видимого текста.
     """
-    logging.info("Starting to parse che168.com data.")
+    logging.info("Starting to parse che168.com data using hidden inputs and heuristics.")
     data = {
-        'year': None,
-        'cost': None,
-        'currency': 'CNY',
-        'volume': None,
-        'power': None,  # New field for power
-        'country': 'china',
-        'engine_type': None
+        'car_name': None, 'year': None, 'month': None, 'mileage': None, 'cost': None,
+        'currency': 'CNY', 'volume': None, 'power': None, 'power_unit': 'кВт', # Default to kW
+        'country': 'china', 'engine_type': None
     }
     error = None
 
     try:
         soup = BeautifulSoup(html_content, 'lxml')
 
-        # ... (rest of the price and year parsing code remains the same)
-        price_input = soup.find('input', {'id': 'car_price'})
-        year_input = soup.find('input', {'id': 'car_firstregtime'})
-        
-        if price_input and price_input.get('value'):
-            try:
-                data['cost'] = int(float(price_input['value']) * 10000)
-            except (ValueError, TypeError):
-                error = "Неверный формат цены."
-        else:
-            error = "Не удалось найти цену."
-        logging.info(f"Price parsing result: cost={data['cost']}, error={error}")
+        def get_input_val(input_id):
+            input_tag = soup.find('input', {'id': input_id})
+            return input_tag.get('value') if input_tag else None
 
-        if year_input and year_input.get('value'):
+        data['car_name'] = get_input_val('car_carname')
+        
+        reg_time = get_input_val('car_firstregtime')
+        if reg_time:
             try:
-                year_parts = year_input['value'].split('/')
-                data['year'] = int(year_parts[0])
-                data['month'] = int(year_parts[1]) if len(year_parts) > 1 else 1
+                year, month = reg_time.split('/')
+                data['year'] = int(year)
+                data['month'] = int(month)
             except (ValueError, IndexError):
-                error = "Неверный формат года."
-        else:
-            # Fallback for year if hidden input not found
-            year_info_div = soup.find('div', class_='car-base-info')
-            if year_info_div:
-                year_text = year_info_div.find('li').get_text() # Assuming first li is year
-                year_match = re.search(r'(\d{4})', year_text)
-                if year_match:
-                    data['year'] = int(year_match.group(1))
-                    # Month is not available in this format, default to 1
-                    data['month'] = 1
+                logging.warning(f"Could not parse car_firstregtime: {reg_time}")
 
-        if data.get('year') == 1900 and data.get('month') == 1:
-            data['special_message'] = "В объявлении не указан год выпуска автомобиля, невозможно корректно провести расчёт"
-            return data, None
+        mileage_val = get_input_val('car_mileage')
+        if mileage_val:
+            try:
+                data['mileage'] = int(float(mileage_val) * 10000)
+            except (ValueError, TypeError):
+                logging.warning(f"Could not parse car_mileage: {mileage_val}")
 
-        if not data['year']:
-             error = "Не удалось найти год."
-        logging.info(f"Year parsing result: year={data['year']}, month={data.get('month')}, error={error}")
+        price_val = get_input_val('car_price')
+        if price_val:
+            try:
+                # Value is in 万 (10,000)
+                data['cost'] = int(float(price_val) * 10000)
+            except (ValueError, TypeError):
+                logging.warning(f"Could not parse car_price: {price_val}")
 
-        # Определение типа двигателя и объема
-        text_content = soup.get_text()
-        logging.info(f"Full text content for engine parsing:\n{text_content}")
-
-        is_hybrid = any(keyword in text_content for keyword in ["混合动力", "油电混合", "插电式混合动力", "插混", "增程式"])
-        is_electric = "0L" in text_content or "纯电动" in text_content
+        # --- Power and Volume from visible text ---
+        all_lis = soup.find_all('li')
+        for li in all_lis:
+            text = li.text
+            if ('T' in text or 'L' in text) and (re.search(r'V\d', text) or re.search(r'\d{3}', text)):
+                power_match = re.search(r'(\d{3,})', text)
+                if power_match:
+                    data['power'] = int(power_match.group(1))
+                    data['power_unit'] = 'л.с.' # Horsepower
+                
+                volume_match = re.search(r'(\d\.\d)[TL]?', text)
+                if volume_match:
+                    data['volume'] = int(float(volume_match.group(1)) * 1000)
+                
+                if data['power'] and data['volume']:
+                    break
         
-        logging.info(f"Is hybrid check: {is_hybrid}")
-        logging.info(f"Is electric check: {is_electric}")
-
-        if is_hybrid:
+        if data.get('power'):
             data['engine_type'] = 'ice'
-            volume_match = re.search(r'(\d+\.?\d*)\s*L', text_content)
-            if volume_match:
-                data['volume'] = int(float(volume_match.group(1)) * 1000)
-            data['power'] = None
-        elif is_electric:
-            data['engine_type'] = 'electro'
-            data['volume'] = 0
-            # Search for power in kW, e.g., "150kW"
-            power_match = re.search(r'(\d+)\s*kW', text_content, re.IGNORECASE)
-            if power_match:
-                data['power'] = int(power_match.group(1))
-            else:
-                # Fallback or error handling if power is not found
-                data['power'] = 0
-        else:
-            data['engine_type'] = 'ice'
-            data['power'] = None
-            volume_match = re.search(r'(\d+\.?\d*)\s*L', text_content)
-            logging.info(f"Volume match: {volume_match}")
-            if volume_match:
-                data['volume'] = int(float(volume_match.group(1)) * 1000) # L to cc
-
-        if data['volume'] is None and data['power'] is None:
-            error = "Не удалось определить объем или мощность двигателя."
-        
-        logging.info(f"Final parsed data: {data}")
-        logging.info(f"Final error state: {error}")
 
     except Exception as e:
         error = f"Произошла непредвиденная ошибка при парсинге che168.com: {e}"

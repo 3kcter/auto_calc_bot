@@ -38,42 +38,69 @@ COUNTRY_CURRENCY_SYMBOL_MAP = {
 async def send_calculation_result(message_or_callback, state: FSMContext, config: Config):
     data = await state.get_data()
     calc_config = await load_calc_config_async()
-    costs = await calculate_cost(data['year'], data['cost'], data['country'], data.get('volume', 0), calc_config, data['engine_type'], data.get('is_from_kazan'), data.get('power', 0))
     
-    year_display_text = data.get('age_category', LEXICON_RU.get(data['year'], data['year']))
+    # Use the category for calculation, but the original year for display
+    calc_year = data.get('year') # This is the category, e.g., 'year_3_5'
+    display_year = data.get('original_year', calc_year) # Fallback to category if original_year is not present
     
-    engine_type_text = LEXICON_RU.get(data['engine_type'], data['engine_type'])
-    if data.get('hybrid_type'):
-        engine_type_text = LEXICON_RU.get(data['hybrid_type'], data['hybrid_type'])
-
-
-    currency_symbol = COUNTRY_CURRENCY_SYMBOL_MAP.get(data['country'], '')
-
-    output_text = (
-        f"{LEXICON_RU['calculation_params']}:\n"
-        f"🔹 {LEXICON_RU['car_age']}: {year_display_text}\n"
-        f"🔹 {LEXICON_RU['engine_type_label']}: {engine_type_text}\n"
-        f"🔹 {LEXICON_RU['car_cost']}: {data['cost']:,} {currency_symbol}\n"
+    costs = await calculate_cost(
+        calc_year, 
+        data['cost'], 
+        data['country'], 
+        data.get('volume', 0), 
+        calc_config, 
+        data['engine_type'], 
+        data.get('is_from_kazan'), 
+        data.get('power', 0)
     )
     
-    if (data['engine_type'] == 'electro' or data.get('hybrid_type') == 'sequential_hybrid') and data.get('power_display', 0) > 0:
-        output_text += f"🔹 {LEXICON_RU['power']}: {data['power_display']} {data['power_unit']}\n\n"
-    elif data.get('volume', 0) > 0:
-        output_text += f"🔹 {LEXICON_RU['engine_volume']}: {data.get('volume', 0)} куб. см.\n\n"
-    else:
-        output_text += "\n" # Add a newline if engine volume is not displayed, to maintain spacing
+    currency_symbol = COUNTRY_CURRENCY_SYMBOL_MAP.get(data['country'], '')
 
-    output_text += f"🔸 {LEXICON_RU['customs_payments']}: {round(costs['customs_payments']):,} руб.\n"
+    # --- Build the new message ---
+    
+    params_lines = []
+    # Car Cost
+    if data.get('cost'):
+        params_lines.append(f"💰 **Стоимость:** {data['cost']:,} {currency_symbol}".replace(',', ' '))
+    # Year
+    display_month = data.get('month')
+    year_str = str(display_year)
+    if display_month and isinstance(display_year, int):
+        year_str = f"{display_year}-{display_month:02d}"
+    params_lines.append(f"📅 **Год выпуска:** {year_str}")
+    # Volume
+    if data.get('volume', 0) > 0:
+        params_lines.append(f"⚙️ **Объём двигателя:** {data['volume']} см³")
+    # Power
+    if data.get('power'):
+        power_unit = data.get('power_unit', 'кВт')
+        power_display = data.get('power_display', data['power']) 
+        params_lines.append(f"⚡️ **Мощность:** {power_display} {power_unit}")
+
+    params_section = "\n".join(params_lines)
+
+    payments_lines = [
+        f"🇷🇺 **Таможенная пошлина:** {round(costs['customs_payments']):,} руб.".replace(',', ' '),
+        f"📑 **Таможенный сбор:** {round(costs['customs_clearance']):,} руб.".replace(',', ' '),
+        f"♻️ **Утилизационный сбор:** {costs['recycling_fee']:,} руб.".replace(',', ' ')
+    ]
     if costs.get('excise_tax', 0) > 0:
-        output_text += f"🔸 {LEXICON_RU['excise_tax']}: {round(costs['excise_tax']):,} руб.\n"
-    output_text += f"🔸 {LEXICON_RU['customs_clearance']}: {round(costs['customs_clearance']):,} руб.\n"
-    output_text += f"🔸 {LEXICON_RU['recycling_fee']}: {costs['recycling_fee']:,} руб.\n"
+        payments_lines.insert(2, f"💸 **Акциз:** {round(costs['excise_tax']):,} руб.".replace(',', ' '))
+    if costs.get('vat', 0) > 0:
+        payments_lines.append(f"📊 **НДС:** {round(costs['vat']):,} руб.".replace(',', ' '))
 
-    if costs['vat'] > 0:
-        output_text += f"\n🔸 {LEXICON_RU['vat']}: {round(costs['vat']):,} руб."
+    payments_section = "\n".join(payments_lines)
 
-    output_text += f"\n\n{LEXICON_RU['total_cost']}: {round(costs['total_cost']):,} {currency_symbol} ({round(costs['total_cost_rub']):,} руб.)"
-
+    total_cost_rub_formatted = f"{round(costs['total_cost_rub']):,}".replace(',', ' ')
+    
+    output_text = (
+        f"🚗  **Итоги расчёта для вашего авто** 🚗\n\n"
+        f"**Параметры:**\n{params_section}\n\n"
+        f"⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯\n\n"
+        f"**Расчётные платежи:**\n{payments_section}\n\n"
+        f"⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯\n\n"
+        f"**Итоговая стоимость: `{total_cost_rub_formatted} руб.`**"
+    )
 
     if isinstance(message_or_callback, Message):
         target_message = message_or_callback
@@ -86,7 +113,8 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
 
     await target_message.answer(
         text=output_text,
-        reply_markup=create_after_calculation_keyboard(is_admin=is_admin)
+        reply_markup=create_after_calculation_keyboard(is_admin=is_admin),
+        parse_mode="Markdown"
     )
     await state.set_state(CalculatorFSM.result)
 
@@ -95,58 +123,90 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
 async def process_detailed_calculation_press(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     calc_config = await load_calc_config_async()
-    costs = await calculate_cost(data['year'], data['cost'], data['country'], data.get('volume', 0), calc_config, data['engine_type'], data.get('is_from_kazan'), data.get('power', 0))
-
-    detailed_output_text = f"{LEXICON_RU['calculation_params']}:\n"
-    detailed_output_text += f"🔹 {LEXICON_RU['car_age']}: {data.get('age_category', LEXICON_RU.get(data['year'], data['year']))}\n"
-    engine_type_text = LEXICON_RU.get(data['engine_type'], data['engine_type'])
-    if data.get('hybrid_type'):
-        engine_type_text = LEXICON_RU.get(data['hybrid_type'], data['hybrid_type'])
-    detailed_output_text += f"🔹 {LEXICON_RU['engine_type_label']}: {engine_type_text}\n"
-    detailed_output_text += f"🔹 {LEXICON_RU['car_cost']}: {data['cost']:,} {COUNTRY_CURRENCY_SYMBOL_MAP.get(data['country'], '')}\n"
     
-    if (data['engine_type'] == 'electro' or data.get('hybrid_type') == 'sequential_hybrid') and data.get('power_display', 0) > 0:
-        detailed_output_text += f"🔹 {LEXICON_RU['power']}: {data['power_display']} {data['power_unit']}\n\n"
-    elif data.get('volume', 0) > 0:
-        detailed_output_text += f"🔹 {LEXICON_RU['engine_volume']}: {data.get('volume', 0)} куб. см.\n\n"
-    else:
-        detailed_output_text += "\n" # Add a newline if engine volume is not displayed, to maintain spacing
+    calc_year = data.get('year')
+    display_year = data.get('original_year', calc_year)
 
-    if data['engine_type'] == 'electro':
-        detailed_output_text += f"🔸 {LEXICON_RU['customs_payments']} (15%): {round(costs['customs_payments']):,} руб.\n"
-        if costs.get('excise_tax', 0) > 0:
-            detailed_output_text += f"🔸 {LEXICON_RU['excise_tax']}: {round(costs['excise_tax']):,} руб.\n"
-    else:
-        detailed_output_text += f"🔸 {LEXICON_RU['customs_payments']}: {round(costs['customs_payments']):,} руб.\n"
+    costs = await calculate_cost(
+        calc_year, 
+        data['cost'], 
+        data['country'], 
+        data.get('volume', 0), 
+        calc_config, 
+        data['engine_type'], 
+        data.get('is_from_kazan'), 
+        data.get('power', 0)
+    )
 
-    detailed_output_text += f"🔸 {LEXICON_RU['customs_clearance']}: {round(costs['customs_clearance']):,} руб.\n"
-    detailed_output_text += f"🔸 {LEXICON_RU['recycling_fee']}: {costs['recycling_fee']:,} руб.\n"
+    currency_symbol = COUNTRY_CURRENCY_SYMBOL_MAP.get(data['country'], '')
 
+    # --- Parameters Section ---
+    params_lines = []
+    if data.get('cost'):
+        params_lines.append(f"💰 **Стоимость:** {data['cost']:,} {currency_symbol}".replace(',', ' '))
+    display_month = data.get('month')
+    year_str = str(display_year)
+    if display_month and isinstance(display_year, int):
+        year_str = f"{display_year}-{display_month:02d}"
+    params_lines.append(f"📅 **Год выпуска:** {year_str}")
+    if data.get('volume', 0) > 0:
+        params_lines.append(f"⚙️ **Объём двигателя:** {data['volume']} см³")
+    if data.get('power'):
+        power_unit = data.get('power_unit', 'кВт')
+        power_display = data.get('power_display', data['power'])
+        params_lines.append(f"⚡️ **Мощность:** {power_display} {power_unit}")
+    params_section = "\n".join(params_lines)
 
+    # --- Main Payments Section ---
+    main_payments_lines = [
+        f"🇷🇺 **Таможенная пошлина:** {round(costs['customs_payments']):,} руб.".replace(',', ' '),
+        f"📑 **Таможенный сбор:** {round(costs['customs_clearance']):,} руб.".replace(',', ' '),
+        f"♻️ **Утилизационный сбор:** {costs['recycling_fee']:,} руб.".replace(',', ' ')
+    ]
+    if costs.get('excise_tax', 0) > 0:
+        main_payments_lines.insert(2, f"💸 **Акциз:** {round(costs['excise_tax']):,} руб.".replace(',', ' '))
+    if costs.get('vat', 0) > 0:
+        main_payments_lines.append(f"📊 **НДС:** {round(costs['vat']):,} руб.".replace(',', ' '))
+    main_payments_section = "\n".join(main_payments_lines)
+
+    # --- Additional Expenses Section ---
+    additional_expenses_lines = []
     if data['country'] == 'korea':
-        detailed_output_text += f"🔸 {LEXICON_RU['dealer_commission']}: {costs['dealer_commission']:,} руб.\n"
-        detailed_output_text += f"🔸 {LEXICON_RU['korea_inland_transport']}: {costs['korea_inland_transport']:,} руб.\n"
-        detailed_output_text += f"🔸 {LEXICON_RU['korea_port_transport_loading']}: {costs['korea_port_transport_loading']:,} руб.\n"
-        detailed_output_text += f"🔸 {LEXICON_RU['vladivostok_expenses']}: {costs['vladivostok_expenses']:,} руб.\n"
-        detailed_output_text += f"🔸 {LEXICON_RU['logistics_vladivostok_kazan']}: {costs['logistics_vladivostok_kazan']:,} руб.\n"
-        detailed_output_text += f"🔸 {LEXICON_RU['car_preparation']}: {costs['car_preparation']:,} руб.\n"
-        detailed_output_text += f"🔸 {LEXICON_RU['other_expenses']}: {costs['other_expenses']:,} руб.\n"
+        additional_expenses_lines.append(f"🇰🇷 **Комиссия дилера:** {costs['dealer_commission']:,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🚛 **Транспорт по Корее:** {costs['korea_inland_transport']:,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🚢 **Погрузка и фрахт:** {costs['korea_port_transport_loading']:,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🇷🇺 **Расходы по Владивостоку:** {costs['vladivostok_expenses']:,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🚚 **Доставка до вашего города:** {costs['logistics_vladivostok_kazan']:,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🧼 **Подготовка авто:** {costs['car_preparation']:,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"📎 **Прочие расходы:** {costs['other_expenses']:,} руб.".replace(',', ' '))
     elif data['country'] == 'china':
-        detailed_output_text += f"🔸 {LEXICON_RU['dealer_commission']}: {costs['dealer_commission']:,} руб.\n"
-        detailed_output_text += f"🔸 {LEXICON_RU['china_documents_delivery']}: {round(costs['china_documents_delivery']):,} руб.\n"
-        detailed_output_text += f"🔸 {LEXICON_RU['logistics_cost']}: {round(costs['logistics_cost']):,} руб.\n"
-        detailed_output_text += f"🔸 {LEXICON_RU['lab_svh_cost']}: {round(costs['lab_svh_cost']):,} руб.\n"
-        detailed_output_text += f"🔸 {LEXICON_RU['other_expenses']}: {costs['other_expenses']:,} руб.\n"
+        additional_expenses_lines.append(f"🇨🇳 **Комиссия дилера:** {costs['dealer_commission']:,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"📦 **Доставка документов:** {round(costs['china_documents_delivery']):,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🚚 **Логистика:** {round(costs['logistics_cost']):,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🔬 **Лаборатория и СВХ:** {round(costs['lab_svh_cost']):,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"📎 **Прочие расходы:** {costs['other_expenses']:,} руб.".replace(',', ' '))
 
     if costs.get('delivery_to_region_cost', 0) > 0:
-        detailed_output_text += f"🔸 {LEXICON_RU['delivery_to_region']}: {costs['delivery_to_region_cost']:,} руб.\n"
+        additional_expenses_lines.append(f"✈️ **Доставка в регион:** {costs['delivery_to_region_cost']:,} руб.".replace(',', ' '))
+    
+    additional_expenses_section = "\n".join(additional_expenses_lines)
+    country_name = "Корея" if data['country'] == 'korea' else "Китай"
 
-    if costs['vat'] > 0:
-        detailed_output_text += f"🔸 {LEXICON_RU['vat']}: {round(costs['vat']):,} руб.\n"
+    total_cost_rub_formatted = f"{round(costs['total_cost_rub']):,}".replace(',', ' ')
 
-    detailed_output_text += f"\n{LEXICON_RU['total_cost']}: {round(costs['total_cost']):,} {COUNTRY_CURRENCY_SYMBOL_MAP.get(data['country'], '')} ({round(costs['total_cost_rub']):,} руб.)"
+    # --- Build Final Message ---
+    output_text = (
+        f"📋 **Детальный расчёт для вашего авто** 📋\n\n"
+        f"**Параметры:**\n{params_section}\n\n"
+        f"⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯\n\n"
+        f"**Основные платежи:**\n{main_payments_section}\n\n"
+        f"⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯\n\n"
+        f"**Дополнительные расходы ({country_name}):**\n{additional_expenses_section}\n\n"
+        f"⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯\n\n"
+        f"**Итоговая стоимость: `{total_cost_rub_formatted} руб.`**"
+    )
 
-    await callback.message.answer(text=detailed_output_text)
+    await callback.message.answer(text=output_text, parse_mode="Markdown")
     await callback.answer()
 
 
@@ -204,7 +264,9 @@ async def process_back_press(callback: CallbackQuery, state: FSMContext):
 
 @calculator_router.callback_query(StateFilter(CalculatorFSM.year))
 async def process_year_sent(callback: CallbackQuery, state: FSMContext):
-    await state.update_data(year=callback.data)
+    year_category = callback.data
+    year_display = LEXICON_RU.get(year_category, year_category)
+    await state.update_data(year=year_category, original_year=year_display) # Use original_year to store the display text
     await callback.message.edit_text(
         text=f"{LEXICON_RU['select_engine_type']}\n\n{LEXICON_RU['hybrid_info']}",
         reply_markup=create_engine_type_keyboard()
