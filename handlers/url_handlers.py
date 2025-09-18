@@ -9,6 +9,7 @@ from lexicon.lexicon import LEXICON_RU
 from services.parser import parse_encar_requests, validate_and_normalize_url, parse_che168_requests
 from config.config import load_config, Config
 from handlers.calculator_handlers import send_calculation_result, CalculatorFSM
+from keyboards.keyboards import create_kazan_question_keyboard, create_kazan_question_url_keyboard
 
 url_router = Router()
 
@@ -96,7 +97,15 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
                 car_data['age_category'] = get_age_category_display(age_val)
             
             await state.update_data(**car_data)
-            await send_calculation_result(message, state, config)
+
+            # Ask if the user is from Kazan
+            sent_message = await message.answer(
+                text=LEXICON_RU['is_from_kazan_question'],
+                reply_markup=create_kazan_question_url_keyboard()
+            )
+            await state.update_data(prompt_message_id=sent_message.message_id)
+            await state.set_state(CalculatorFSM.is_from_kazan)
+
             await processing_message.delete() # Delete processing message
         else:
             await message.answer("Не удалось извлечь все необходимые данные со страницы. Пожалуйста, попробуйте другую ссылку или воспользуйтесь обычным калькулятором.")

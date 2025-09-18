@@ -95,6 +95,14 @@ def create_kazan_question_keyboard() -> InlineKeyboardMarkup:
     )
     return builder.as_markup()
 
+def create_kazan_question_url_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text=LEXICON_RU['yes'], callback_data='kazan_yes'),
+        InlineKeyboardButton(text=LEXICON_RU['no'], callback_data='kazan_no')
+    )
+    return builder.as_markup()
+
 def create_rates_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(

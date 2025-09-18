@@ -128,6 +128,9 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
         detailed_output_text += f"🔸 {LEXICON_RU['lab_svh_cost']}: {round(costs['lab_svh_cost']):,} руб.\n"
         detailed_output_text += f"🔸 {LEXICON_RU['other_expenses']}: {costs['other_expenses']:,} руб.\n"
 
+    if costs.get('delivery_to_region_cost', 0) > 0:
+        detailed_output_text += f"🔸 {LEXICON_RU['delivery_to_region']}: {costs['delivery_to_region_cost']:,} руб.\n"
+
     if costs['vat'] > 0:
         detailed_output_text += f"🔸 {LEXICON_RU['vat']}: {round(costs['vat']):,} руб.\n"
 

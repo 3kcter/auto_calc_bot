@@ -36,9 +36,14 @@ class KoreaConfig:
     other_expenses_rub: int
 
 @dataclass
+class GeneralConfig:
+    delivery_to_region_rub: int
+
+@dataclass
 class CalcConfig:
     china: ChinaConfig
     korea: KoreaConfig
+    general: GeneralConfig
 
 @dataclass
 class Config:
@@ -51,7 +56,8 @@ def load_calc_config(path: str = 'calc_config.json') -> CalcConfig:
         data = json.load(f)
         return CalcConfig(
             china=ChinaConfig(**data['china']),
-            korea=KoreaConfig(**data['korea'])
+            korea=KoreaConfig(**data['korea']),
+            general=GeneralConfig(**data['general'])
         )
 
 async def load_calc_config_async(path: str = 'calc_config.json') -> CalcConfig:
@@ -59,7 +65,8 @@ async def load_calc_config_async(path: str = 'calc_config.json') -> CalcConfig:
         data = json.loads(await f.read())
         return CalcConfig(
             china=ChinaConfig(**data['china']),
-            korea=KoreaConfig(**data['korea'])
+            korea=KoreaConfig(**data['korea']),
+            general=GeneralConfig(**data['general'])
         )
 
 def save_calc_config(config: CalcConfig, path: str = 'calc_config.json'):

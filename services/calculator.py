@@ -139,6 +139,9 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
         excise_tax = _calculate_excise_tax(power)
 
     # Initialize all possible costs to 0
+    delivery_to_region_cost = 0
+    if is_from_kazan == 'no':
+        delivery_to_region_cost = calc_config.general.delivery_to_region_rub
     dealer_commission = 0
     china_documents_delivery = 0
     logistics_cost = 0
@@ -155,11 +158,7 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
         dealer_commission = china_config.dealer_commission
         china_documents_delivery = china_config.documents_delivery_cny * cny_rate
         logistics_cost = china_config.logistics_kazan_usd * usd_rate + china_config.logistics_kazan_rub
-        if is_from_kazan == 'no':
-            logistics_cost += 40000
         lab_svh_cost = china_config.lab_svh_kazan_rub
-        if is_from_kazan == 'no':
-            lab_svh_cost = china_config.lab_svh_not_kazan_rub
         other_expenses = china_config.other_expenses_rub
 
     elif country == 'korea':
@@ -176,7 +175,7 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
         cost_rub + dealer_commission + customs_payments + recycling_fee +
         customs_clearance + china_documents_delivery + logistics_cost + lab_svh_cost +
         korea_inland_transport + korea_port_transport_loading + vladivostok_expenses +
-        logistics_vladivostok_kazan + car_preparation + other_expenses + excise_tax
+        logistics_vladivostok_kazan + car_preparation + other_expenses + excise_tax + delivery_to_region_cost
     )
 
     vat = 0
@@ -204,6 +203,7 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
         "car_preparation": car_preparation,
         "other_expenses": other_expenses,
         "excise_tax": excise_tax,
+        "delivery_to_region_cost": delivery_to_region_cost,
         "vat": vat,
         "total_cost": total_cost_original_currency,
         "total_cost_rub": total_cost_rub,
