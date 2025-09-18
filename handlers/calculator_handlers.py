@@ -172,22 +172,23 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
     # --- Additional Expenses Section ---
     additional_expenses_lines = []
     if data['country'] == 'korea':
-        additional_expenses_lines.append(f"🇰🇷 **Комиссия дилера:** {costs['dealer_commission']:,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"🚛 **Транспорт по Корее:** {costs['korea_inland_transport']:,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"🚢 **Погрузка и фрахт:** {costs['korea_port_transport_loading']:,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"🇷🇺 **Расходы по Владивостоку:** {costs['vladivostok_expenses']:,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"🚚 **Доставка до вашего города:** {costs['logistics_vladivostok_kazan']:,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"🧼 **Подготовка авто:** {costs['car_preparation']:,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"📎 **Прочие расходы:** {costs['other_expenses']:,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🇰🇷 **Комиссия дилера:** {round(costs['dealer_commission']):,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🚛 **Транспорт по Корее:** {round(costs['korea_inland_transport']):,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🚢 **Погрузка и фрахт:** {round(costs['korea_port_transport_loading']):,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🇷🇺 **Расходы по Владивостоку:** {round(costs['vladivostok_expenses']):,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🚚 **Доставка до вашего города:** {round(costs['logistics_vladivostok_kazan']):,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🧼 **Подготовка авто:** {round(costs['car_preparation']):,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"📎 **Прочие расходы:** {round(costs['other_expenses']):,} руб.".replace(',', ' '))
     elif data['country'] == 'china':
-        additional_expenses_lines.append(f"🇨🇳 **Комиссия дилера:** {costs['dealer_commission']:,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🇨🇳 **Комиссия дилера:** {round(costs['dealer_commission']):,} руб.".replace(',', ' '))
         additional_expenses_lines.append(f"📦 **Доставка документов:** {round(costs['china_documents_delivery']):,} руб.".replace(',', ' '))
         additional_expenses_lines.append(f"🚚 **Логистика:** {round(costs['logistics_cost']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"🔬 **Лаборатория и СВХ:** {round(costs['lab_svh_cost']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"📎 **Прочие расходы:** {costs['other_expenses']:,} руб.".replace(',', ' '))
+        if costs.get('lab_svh_cost', 0) > 0:
+            additional_expenses_lines.append(f"🔬 **Лаборатория и СВХ:** {round(costs['lab_svh_cost']):,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"📎 **Прочие расходы:** {round(costs['other_expenses']):,} руб.".replace(',', ' '))
 
     if costs.get('delivery_to_region_cost', 0) > 0:
-        additional_expenses_lines.append(f"✈️ **Доставка в регион:** {costs['delivery_to_region_cost']:,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"✈️ **Доставка в регион:** {round(costs['delivery_to_region_cost']):,} руб.".replace(',', ' '))
     
     additional_expenses_section = "\n".join(additional_expenses_lines)
     country_name = "Корея" if data['country'] == 'korea' else "Китай"

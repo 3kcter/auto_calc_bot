@@ -54,10 +54,11 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
         car_data = None
         error = None
 
-        #if 'encar.com' in url:
-            
-            #car_data, error = parse_encar_requests(url)
-        if 'che168.com' in url:
+        if 'encar.com' in url:
+            await message.answer("Пожалуйста, отправьте ссылку на сайт che168.com")
+            await processing_message.delete()
+            return
+        elif 'che168.com' in url:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as response:
                     if response.status == 200:
@@ -83,15 +84,14 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
                 await message.bot.send_message(admin_id, f"Ошибка парсинга URL: {url}\n{error}")
             return
 
-        if car_data and car_data.get('year') is not None and (car_data.get('cost') is not None or 'che168.com' in url):
-            if car_data.get('engine_type') == 'electro':
-                if not car_data.get('power'):
-                    await message.answer("Не удалось извлечь мощность для электромобиля. Пожалуйста, попробуйте другую ссылку или воспользуйтесь обычным калькулятором.")
-                    await processing_message.delete()
-                    return
-                car_data['power_display'] = car_data['power']
-                car_data['power_unit'] = 'кВт'
-            elif car_data.get('volume') is None:
+        if car_data and (car_data.get('engine_type') == 'electro' or (car_data.get('power') and not car_data.get('volume'))):
+            await message.answer("Для расчёта электромобиля обратитесь, пожалуйста, к менеджеру - @makauto_manager")
+            await processing_message.delete()
+            await state.clear()
+            return
+
+        if car_data and car_data.get('year') is not None and car_data.get('cost') is not None:
+            if car_data.get('volume') is None:
                  await message.answer("Не удалось извлечь объем двигателя. Пожалуйста, попробуйте другую ссылку или воспользуйтесь обычным калькулятором.")
                  await processing_message.delete()
                  return
@@ -121,4 +121,3 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
         await processing_message.delete()
         for admin_id in config.bot.admin_ids:
             await message.bot.send_message(admin_id, f"Произошла ошибка при обработке ссылки: {url}\n{e}")
-

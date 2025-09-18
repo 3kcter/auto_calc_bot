@@ -16,17 +16,10 @@ def validate_and_normalize_url(url: str) -> tuple[str | None, str | None]:
     Валидирует и нормализует URL, чтобы он соответствовал одному из поддерживаемых форматов.
     Возвращает нормализованный URL или сообщение об ошибке.
     """
-    if 'encar.com' in url:
-        match = re.search(r'encar.com/cars/detail/(\d+)', url)
-        if match:
-            car_id = match.group(1)
-            return f"https://fem.encar.com/cars/detail/{car_id}", None
-        return None, "Неверный формат ссылки a. Пожалуйста, отправьте корректную ссылку."
-    
     if 'che168.com' in url:
         return url.split('?')[0], None
 
-    return None, "Пожалуйста, отправьте ссылку на сайт encar.com или che168.com"
+    return None, "Пожалуйста, отправьте ссылку на сайт che168.com"
 
 def _parse_encar_preloaded_state(html_content: str) -> tuple[dict, str | None]:
     """

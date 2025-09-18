@@ -140,8 +140,6 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
 
     # Initialize all possible costs to 0
     delivery_to_region_cost = 0
-    if is_from_kazan == 'no':
-        delivery_to_region_cost = calc_config.general.delivery_to_region_rub
     dealer_commission = 0
     china_documents_delivery = 0
     logistics_cost = 0
@@ -158,8 +156,11 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
         dealer_commission = china_config.dealer_commission
         china_documents_delivery = china_config.documents_delivery_cny * cny_rate
         logistics_cost = china_config.logistics_kazan_usd * usd_rate + china_config.logistics_kazan_rub
-        lab_svh_cost = china_config.lab_svh_kazan_rub
         other_expenses = china_config.other_expenses_rub
+        if is_from_kazan == 'no':
+            delivery_to_region_cost = china_config.lab_svh_not_kazan_rub
+        else:
+            lab_svh_cost = china_config.lab_svh_kazan_rub
 
     elif country == 'korea':
         korea_config = calc_config.korea
@@ -170,6 +171,9 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
         logistics_vladivostok_kazan = korea_config.logistics_vladivostok_kazan_rub
         car_preparation = korea_config.car_preparation_rub
         other_expenses = korea_config.other_expenses_rub
+        # For Korea, delivery to region is a general cost, not replacing anything
+        if is_from_kazan == 'no':
+            delivery_to_region_cost = calc_config.general.delivery_to_region_rub
 
     total_cost_rub = (
         cost_rub + dealer_commission + customs_payments + recycling_fee +
@@ -208,4 +212,3 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
         "total_cost": total_cost_original_currency,
         "total_cost_rub": total_cost_rub,
     }
-    
