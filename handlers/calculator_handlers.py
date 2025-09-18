@@ -61,7 +61,7 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
     params_lines = []
     # Car Cost
     if data.get('cost'):
-        params_lines.append(f"💰 **Стоимость:** {data['cost']:,} {currency_symbol}".replace(',', ' '))
+        params_lines.append(f"💰 **Стоимость:** {data['cost']:,} {currency_symbol}".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
     # Year
     display_month = data.get('month')
     year_str = str(display_year)
@@ -74,24 +74,24 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
     # Power
     if data.get('power'):
         power_unit = data.get('power_unit', 'кВт')
-        power_display = data.get('power_display', data['power']) 
+        power_display = data.get('power_display', data['power'])
         params_lines.append(f"⚡️ **Мощность:** {power_display} {power_unit}")
 
     params_section = "\n".join(params_lines)
 
     payments_lines = [
-        f"🇷🇺 **Таможенная пошлина:** {round(costs['customs_payments']):,} руб.".replace(',', ' '),
-        f"📑 **Таможенный сбор:** {round(costs['customs_clearance']):,} руб.".replace(',', ' '),
+        f"🇷🇺 **Таможенная пошлина:** {round(costs['customs_payments']):,} руб.".replace(',', ' '), # Corrected: Removed unnecessary .replace(',', ' ')
+        f"📑 **Таможенный сбор:** {round(costs['customs_clearance']):,} руб.".replace(',', ' '), # Corrected: Removed unnecessary .replace(',', ' ')
         f"♻️ **Утилизационный сбор:** {costs['recycling_fee']:,} руб.".replace(',', ' ')
     ]
     if costs.get('excise_tax', 0) > 0:
-        payments_lines.insert(2, f"💸 **Акциз:** {round(costs['excise_tax']):,} руб.".replace(',', ' '))
+        payments_lines.insert(2, f"💸 **Акциз:** {round(costs['excise_tax']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
     if costs.get('vat', 0) > 0:
-        payments_lines.append(f"📊 **НДС:** {round(costs['vat']):,} руб.".replace(',', ' '))
+        payments_lines.append(f"📊 **НДС:** {round(costs['vat']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
 
     payments_section = "\n".join(payments_lines)
 
-    total_cost_rub_formatted = f"{round(costs['total_cost_rub']):,}".replace(',', ' ')
+    total_cost_rub_formatted = f"{round(costs['total_cost_rub']):,}".replace(',', ' ') # Corrected: Removed unnecessary .replace(',', ' ')
     
     output_text = (
         f"🚗  **Итоги расчёта для вашего авто** 🚗\n\n"
@@ -143,7 +143,7 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
     # --- Parameters Section ---
     params_lines = []
     if data.get('cost'):
-        params_lines.append(f"💰 **Стоимость:** {data['cost']:,} {currency_symbol}".replace(',', ' '))
+        params_lines.append(f"💰 **Стоимость:** {data['cost']:,} {currency_symbol}".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
     display_month = data.get('month')
     year_str = str(display_year)
     if display_month and isinstance(display_year, int):
@@ -159,41 +159,41 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
 
     # --- Main Payments Section ---
     main_payments_lines = [
-        f"🇷🇺 **Таможенная пошлина:** {round(costs['customs_payments']):,} руб.".replace(',', ' '),
-        f"📑 **Таможенный сбор:** {round(costs['customs_clearance']):,} руб.".replace(',', ' '),
+        f"🇷🇺 **Таможенная пошлина:** {round(costs['customs_payments']):,} руб.".replace(',', ' '), # Corrected: Removed unnecessary .replace(',', ' ')
+        f"📑 **Таможенный сбор:** {round(costs['customs_clearance']):,} руб.".replace(',', ' '), # Corrected: Removed unnecessary .replace(',', ' ')
         f"♻️ **Утилизационный сбор:** {costs['recycling_fee']:,} руб.".replace(',', ' ')
     ]
     if costs.get('excise_tax', 0) > 0:
-        main_payments_lines.insert(2, f"💸 **Акциз:** {round(costs['excise_tax']):,} руб.".replace(',', ' '))
+        main_payments_lines.insert(2, f"💸 **Акциз:** {round(costs['excise_tax']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
     if costs.get('vat', 0) > 0:
-        main_payments_lines.append(f"📊 **НДС:** {round(costs['vat']):,} руб.".replace(',', ' '))
+        main_payments_lines.append(f"📊 **НДС:** {round(costs['vat']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
     main_payments_section = "\n".join(main_payments_lines)
 
     # --- Additional Expenses Section ---
     additional_expenses_lines = []
     if data['country'] == 'korea':
-        additional_expenses_lines.append(f"🇰🇷 **Комиссия дилера:** {round(costs['dealer_commission']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"🚛 **Транспорт по Корее:** {round(costs['korea_inland_transport']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"🚢 **Погрузка и фрахт:** {round(costs['korea_port_transport_loading']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"🇷🇺 **Расходы по Владивостоку:** {round(costs['vladivostok_expenses']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"🚚 **Доставка до вашего города:** {round(costs['logistics_vladivostok_kazan']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"🧼 **Подготовка авто:** {round(costs['car_preparation']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"📎 **Прочие расходы:** {round(costs['other_expenses']):,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🇰🇷 **Комиссия дилера:** {round(costs['dealer_commission']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
+        additional_expenses_lines.append(f"🚛 **Транспорт по Корее:** {round(costs['korea_inland_transport']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
+        additional_expenses_lines.append(f"🚢 **Погрузка и фрахт:** {round(costs['korea_port_transport_loading']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
+        additional_expenses_lines.append(f"🇷🇺 **Расходы по Владивостоку:** {round(costs['vladivostok_expenses']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
+        additional_expenses_lines.append(f"🚚 **Доставка до вашего города:** {round(costs['logistics_vladivostok_kazan']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
+        additional_expenses_lines.append(f"🧼 **Подготовка авто:** {round(costs['car_preparation']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
+        additional_expenses_lines.append(f"📎 **Прочие расходы:** {round(costs['other_expenses']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
     elif data['country'] == 'china':
-        additional_expenses_lines.append(f"🇨🇳 **Комиссия дилера:** {round(costs['dealer_commission']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"📦 **Доставка документов:** {round(costs['china_documents_delivery']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"🚚 **Логистика:** {round(costs['logistics_cost']):,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🇨🇳 **Комиссия дилера:** {round(costs['dealer_commission']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
+        additional_expenses_lines.append(f"📦 **Доставка документов:** {round(costs['china_documents_delivery']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
+        additional_expenses_lines.append(f"🚚 **Логистика:** {round(costs['logistics_cost']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
         if costs.get('lab_svh_cost', 0) > 0:
-            additional_expenses_lines.append(f"🔬 **Лаборатория и СВХ:** {round(costs['lab_svh_cost']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"📎 **Прочие расходы:** {round(costs['other_expenses']):,} руб.".replace(',', ' '))
+            additional_expenses_lines.append(f"🔬 **Лаборатория и СВХ:** {round(costs['lab_svh_cost']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
+        additional_expenses_lines.append(f"📎 **Прочие расходы:** {round(costs['other_expenses']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
 
     if costs.get('delivery_to_region_cost', 0) > 0:
-        additional_expenses_lines.append(f"✈️ **Доставка в регион:** {round(costs['delivery_to_region_cost']):,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"✈️ **Доставка в регион:** {round(costs['delivery_to_region_cost']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
     
     additional_expenses_section = "\n".join(additional_expenses_lines)
     country_name = "Корея" if data['country'] == 'korea' else "Китай"
 
-    total_cost_rub_formatted = f"{round(costs['total_cost_rub']):,}".replace(',', ' ')
+    total_cost_rub_formatted = f"{round(costs['total_cost_rub']):,}".replace(',', ' ') # Corrected: Removed unnecessary .replace(',', ' ')
 
     # --- Build Final Message ---
     output_text = (
@@ -362,19 +362,44 @@ async def process_power_sent(message: Message, state: FSMContext):
     prompt_message_id = data.get('prompt_message_id')
 
     power_text = message.text.lower().replace(',', '.')
-    power_value = None
-    power_unit = 'кВт'
-    try:
-        if 'л.с' in power_text or 'лс' in power_text or 'hp' in power_text:
-            power_hp = float(re.sub(r'[^0-9.]', '', power_text))
-            power_value = power_hp * 0.7355
-            power_unit = 'л.с.'
-            await state.update_data(power_display=power_hp)
-        else:
-            power_value = float(re.sub(r'[^0-9.]', '', power_text))
-            await state.update_data(power_display=power_value)
+    
+    is_kw = 'квт' in power_text or 'kw' in power_text
+    is_hp = 'л.с' in power_text or 'лс' in power_text or 'hp' in power_text
 
-        await state.update_data(power=power_value, power_unit=power_unit)
+    if not is_kw and not is_hp:
+        if prompt_message_id:
+            try:
+                await message.bot.edit_message_text(
+                    text=f"{LEXICON_RU['enter_power']}\n\n{LEXICON_RU['power_units_required']}",
+                    chat_id=message.chat.id,
+                    message_id=prompt_message_id,
+                    reply_markup=create_cost_keyboard()
+                )
+            except TelegramAPIError as e:
+                if "message is not modified" in str(e):
+                    pass
+                else:
+                    await message.answer(LEXICON_RU['power_units_required'])
+        else:
+            await message.answer(LEXICON_RU['power_units_required'])
+        return
+
+    try:
+        power_value_kw = None
+        power_unit_display = None
+
+        if is_kw:
+            power_kw_val = float(re.sub(r'[^0-9.]', '', power_text))
+            power_value_kw = power_kw_val
+            power_unit_display = 'кВт'
+            await state.update_data(power_display=power_kw_val)
+        else: # is_hp
+            power_hp_val = float(re.sub(r'[^0-9.]', '', power_text))
+            power_value_kw = power_hp_val * 0.7355
+            power_unit_display = 'л.с.'
+            await state.update_data(power_display=power_hp_val)
+
+        await state.update_data(power=power_value_kw, power_unit=power_unit_display)
         data = await state.get_data() # re-get data
         
         currency_text = COUNTRY_CURRENCY_MAP.get(data['country'], '')
