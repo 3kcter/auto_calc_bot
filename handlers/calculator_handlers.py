@@ -205,7 +205,7 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
         f"⎯⎯⎯⎯⎯⎯⎯⎯⎯\n\n"
         f"<b>Дополнительные расходы ({country_name}):</b>\n\n{additional_expenses_section}\n\n"
         f"⎯⎯⎯⎯⎯⎯⎯⎯⎯\n\n"
-        f"<b>Итоговая стоимость:</b> <code>{total_cost_rub_formatted}</code> руб.
+        f"<b>Итоговая стоимость:</b> <code>{total_cost_rub_formatted}</code> руб".
 
     await callback.message.answer(text=output_text, parse_mode="HTML")
     await callback.answer()
