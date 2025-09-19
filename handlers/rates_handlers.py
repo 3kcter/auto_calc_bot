@@ -12,49 +12,18 @@ rates_router = Router()
 async def process_rates_press(callback: CallbackQuery, state: FSMContext):
     await callback.message.delete()
     rates = await get_rates()
-    eur_rate = rates.get('EUR', 'N/A')
-    usd_rate = rates.get('USD', 'N/A')
-    krw_rate = rates.get('KRW', 'N/A')
-    cny_rate = rates.get('CNY', 'N/A')
 
-    if isinstance(eur_rate, float):
-        eur_rate = f'{eur_rate:.2f}'
-    if isinstance(usd_rate, float):
-        usd_rate = f'{usd_rate:.2f}'
-    if isinstance(krw_rate, float):
-        krw_rate = f'{krw_rate:.2f}'
-    if isinstance(cny_rate, float):
-        cny_rate = f'{cny_rate:.2f}'
+    def format_rate(currency_code):
+        rate = rates.get(currency_code, 'N/A')
+        if isinstance(rate, float):
+            return f"{LEXICON_RU[currency_code.lower()]}: {rate:.2f} руб."
+        return f"{LEXICON_RU[currency_code.lower()]}: {rate} руб."
 
     rates_text = f"{LEXICON_RU['rates_message']}\n"
-    
-    # Display EUR
-    eur_rate = rates.get('EUR', 'N/A')
-    if isinstance(eur_rate, float):
-        rates_text += f"{LEXICON_RU['eur']}: {eur_rate:.2f} руб.\n"
-    else:
-        rates_text += f"{LEXICON_RU['eur']}: {eur_rate} руб.\n"
-
-    # Display USD
-    usd_rate = rates.get('USD', 'N/A')
-    if isinstance(usd_rate, float):
-        rates_text += f"{LEXICON_RU['usd']}: {usd_rate:.2f} руб.\n"
-    else:
-        rates_text += f"{LEXICON_RU['usd']}: {usd_rate} руб.\n"
-
-    # Display CNY
-    cny_rate = rates.get('CNY', 'N/A')
-    if isinstance(cny_rate, float):
-        rates_text += f"{LEXICON_RU['cny']}: {cny_rate:.2f} руб.\n"
-    else:
-        rates_text += f"{LEXICON_RU['cny']}: {cny_rate} руб.\n"
-
-    # Display KRW
-    krw_rate = rates.get('KRW', 'N/A')
-    if isinstance(krw_rate, float):
-        rates_text += f"{LEXICON_RU['krw']}: {krw_rate:.2f} руб.\n"
-    else:
-        rates_text += f"{LEXICON_RU['krw']}: {krw_rate} руб.\n"
+    rates_text += f"{format_rate('EUR')}\n"
+    rates_text += f"{format_rate('USD')}\n"
+    rates_text += f"{format_rate('CNY')}\n"
+    rates_text += f"{format_rate('KRW')}\n"
 
     await callback.message.answer(
         text=rates_text,

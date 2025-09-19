@@ -85,7 +85,7 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
         f"♻️ Утилизационный сбор: {costs['recycling_fee']:,} руб.".replace(',', ' ')
     ]
     if costs.get('excise_tax', 0) > 0:
-        payments_lines.insert(2, f"💸 **Акциз: {round(costs['excise_tax']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
+        payments_lines.insert(2, f"💸 Акциз: {round(costs['excise_tax']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
     if costs.get('vat', 0) > 0:
         payments_lines.append(f"📊 НДС: {round(costs['vat']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
 
@@ -99,7 +99,7 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
         f"⎯⎯⎯⎯⎯⎯⎯⎯⎯\n\n"
         f"<b>Расчётные платежи:</b>\n\n{payments_section}\n\n"
         f"⎯⎯⎯⎯⎯⎯⎯⎯⎯\n\n"
-        f"<b>Итого:</b> <code><b>{total_cost_rub_formatted}</b></code> руб."
+        f"<b>Итого:</b> <b><code>{total_cost_rub_formatted}</code></b> руб."
     )
 
     if isinstance(message_or_callback, Message):
@@ -205,7 +205,7 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
         f"⎯⎯⎯⎯⎯⎯⎯⎯⎯\n\n"
         f"<b>Дополнительные расходы ({country_name}):</b>\n\n{additional_expenses_section}\n\n"
         f"⎯⎯⎯⎯⎯⎯⎯⎯⎯\n\n"
-        f"<b>Итоговая стоимость:</b> <code>{total_cost_rub_formatted}</code> руб.")
+        f"<b>Итоговая стоимость:</b> <b><code>{total_cost_rub_formatted}</code></b> руб.")
     await callback.message.answer(text=output_text, parse_mode="HTML")
     await callback.answer()
 
