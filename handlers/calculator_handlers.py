@@ -233,10 +233,10 @@ async def process_back_press(callback: CallbackQuery, state: FSMContext):
         await callback.message.edit_text(text=LEXICON_RU['select_year'], reply_markup=create_year_keyboard())
         await state.set_state(CalculatorFSM.year)
     elif current_state == CalculatorFSM.hybrid_type:
-        await callback.message.edit_text(text=f"{LEXICON_RU['select_engine_type']}\n\n{LEXICON_RU['hybrid_info']}", reply_markup=create_engine_type_keyboard())
+        await callback.message.edit_text(text=f"{LEXICON_RU['select_engine_type']}", reply_markup=create_engine_type_keyboard())
         await state.set_state(CalculatorFSM.engine_type)
     elif current_state == CalculatorFSM.country:
-        await callback.message.edit_text(text=f"{LEXICON_RU['select_engine_type']}\n\n{LEXICON_RU['hybrid_info']}", reply_markup=create_engine_type_keyboard())
+        await callback.message.edit_text(text=f"{LEXICON_RU['select_engine_type']}", reply_markup=create_engine_type_keyboard())
         await state.set_state(CalculatorFSM.engine_type)
     elif current_state == CalculatorFSM.volume:
         await callback.message.edit_text(text=LEXICON_RU['select_country'], reply_markup=create_country_keyboard())
@@ -268,7 +268,7 @@ async def process_year_sent(callback: CallbackQuery, state: FSMContext):
     year_display = LEXICON_RU.get(year_category, year_category)
     await state.update_data(year=year_category, original_year=year_display) # Use original_year to store the display text
     await callback.message.edit_text(
-        text=f"{LEXICON_RU['select_engine_type']}\n\n{LEXICON_RU['hybrid_info']}",
+        text=f"{LEXICON_RU['select_engine_type']}",
         reply_markup=create_engine_type_keyboard()
     )
     await callback.answer()
