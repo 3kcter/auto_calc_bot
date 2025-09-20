@@ -23,10 +23,29 @@ async def parse_encar_playwright(url: str) -> tuple[dict, str | None]:
     
     async with async_playwright() as p:
         try:
-            browser = await p.chromium.launch(headless=True)
+            user_agents = [
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36',
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36',
+                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+            ]
+            random_user_agent = random.choice(user_agents)
+
+            viewport_widths = range(1366, 1921) # Common widths
+            viewport_heights = range(768, 1081) # Common heights
+            random_viewport = {'width': random.choice(viewport_widths), 'height': random.choice(viewport_heights)}
+
+            browser = await p.chromium.launch(headless=True, args=[
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-blink-features=AutomationControlled',
+                '--disable-dev-shm-usage', # Overcomes limited resource problems
+                '--disable-gpu', # Applicable for some Linux environments
+            ])
             context = await browser.new_context(
-                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
-                viewport={'width': 1920, 'height': 1080},
+                user_agent=random_user_agent,
+                viewport=random_viewport,
                 extra_http_headers={
                     'Accept-Language': 'en-US,en;q=0.9',
                     'Accept-Encoding': 'gzip, deflate, br',
