@@ -1,4 +1,4 @@
-# config/rules_config.py
+
 
 CUSTOMS_PAYMENTS_RATES = {
     'up_to_3': {

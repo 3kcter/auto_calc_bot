@@ -102,6 +102,8 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
         f"<b>Итого:</b> <b><code>{total_cost_rub_formatted}</code></b> руб."
     )
 
+    output_text += "\n\n⚠️ Курсы валют часто меняются, поэтому для уверенности советуем запросить актуальный расчёт у менеджера"
+
     if isinstance(message_or_callback, Message):
         target_message = message_or_callback
         user_id = target_message.from_user.id
@@ -206,6 +208,7 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
         f"<b>Дополнительные расходы ({country_name}):</b>\n\n{additional_expenses_section}\n\n"
         f"⎯⎯⎯⎯⎯⎯⎯⎯⎯\n\n"
         f"<b>Итоговая стоимость:</b> <b><code>{total_cost_rub_formatted}</code></b> руб.")
+    output_text += "\n\n⚠️ Курсы валют часто меняются, поэтому для уверенности советуем запросить актуальный расчёт у менеджера"
     await callback.message.answer(text=output_text, parse_mode="HTML")
     await callback.answer()
 
@@ -398,8 +401,7 @@ async def process_power_sent(message: Message, state: FSMContext):
             power_unit_display = 'л.с.'
             await state.update_data(power_display=power_hp_val)
 
-        await state.update_data(power=power_value_kw, power_unit=power_unit_display)
-        data = await state.get_data() # re-get data
+
         
         currency_text = COUNTRY_CURRENCY_MAP.get(data['country'], '')
         
@@ -439,7 +441,7 @@ async def process_cost_sent(message: Message, state: FSMContext, config: Config)
     cost_text = message.text.replace(' ', '').replace(',', '')
     if cost_text.isdigit():
         await state.update_data(cost=int(cost_text))
-        data = await state.get_data() # Re-get data to include updated cost
+        data = await state.get_data() 
 
         if prompt_message_id:
             await message.bot.edit_message_text(

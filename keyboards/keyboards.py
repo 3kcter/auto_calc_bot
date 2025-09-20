@@ -64,7 +64,10 @@ def create_after_calculation_keyboard(is_admin: bool = False) -> InlineKeyboardM
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text=LEXICON_RU['calculate_another_car'], callback_data='/start')
-        )
+    )
+    builder.row(
+        InlineKeyboardButton(text="💬 Связаться с менеджером", url="https://t.me/makauto_manager")
+    )
     if is_admin:
         builder.row(
             InlineKeyboardButton(text=LEXICON_RU['detailed_calculation'], callback_data='detailed_calculation')
