@@ -40,7 +40,7 @@ class GeneralConfig:
     delivery_to_region_rub: int
 
 @dataclass
-class CalcConfig:
+class UserCalcConfig:
     china: ChinaConfig
     korea: KoreaConfig
     general: GeneralConfig
@@ -49,31 +49,31 @@ class CalcConfig:
 class Config:
     bot: TgBot
     log: LogSettings
-    calc: CalcConfig
+    calc: UserCalcConfig
 
-def load_calc_config(path: str = 'calc_config.json') -> CalcConfig:
+def load_user_calc_config(path: str = 'user_calc_config.json') -> UserCalcConfig:
     with open(path, 'r') as f:
         data = json.load(f)
-        return CalcConfig(
+        return UserCalcConfig(
             china=ChinaConfig(**data['china']),
             korea=KoreaConfig(**data['korea']),
             general=GeneralConfig(**data['general'])
         )
 
-async def load_calc_config_async(path: str = 'calc_config.json') -> CalcConfig:
+async def load_user_calc_config_async(path: str = 'user_calc_config.json') -> UserCalcConfig:
     async with aiofiles.open(path, 'r', encoding='utf-8') as f:
         data = json.loads(await f.read())
-        return CalcConfig(
+        return UserCalcConfig(
             china=ChinaConfig(**data['china']),
             korea=KoreaConfig(**data['korea']),
             general=GeneralConfig(**data['general'])
         )
 
-def save_calc_config(config: CalcConfig, path: str = 'calc_config.json'):
+def save_user_calc_config(config: UserCalcConfig, path: str = 'user_calc_config.json'):
     with open(path, 'w') as f:
         json.dump(asdict(config), f, indent=4)
 
-async def save_calc_config_async(config: CalcConfig, path: str = 'calc_config.json'):
+async def save_user_calc_config_async(config: UserCalcConfig, path: str = 'user_calc_config.json'):
     async with aiofiles.open(path, 'w', encoding='utf-8') as f:
         await f.write(json.dumps(asdict(config), indent=4))
 
@@ -89,5 +89,5 @@ def load_config(path: str | None = None) -> Config:
             channel_url=env('CHANNEL_URL')
         ),
         log=LogSettings(level=env('LOG_LEVEL'), format=env('LOG_FORMAT')),
-        calc=load_calc_config()
+        calc=load_user_calc_config()
     )

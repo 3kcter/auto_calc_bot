@@ -14,7 +14,7 @@ from keyboards.keyboards import (
 )
 from services.calculator import calculate_cost
 from services.menu_utils import send_start_menu
-from config.config import load_calc_config_async, Config
+from config.config import load_user_calc_config_async, Config
 
 calculator_router = Router()
 
@@ -37,7 +37,7 @@ COUNTRY_CURRENCY_SYMBOL_MAP = {
 
 async def send_calculation_result(message_or_callback, state: FSMContext, config: Config):
     data = await state.get_data()
-    calc_config = await load_calc_config_async()
+    calc_config = await load_user_calc_config_async()
     
     # Use the category for calculation, but the original year for display
     calc_year = data.get('year') # This is the category, e.g., 'year_3_5'
@@ -122,7 +122,7 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
 @calculator_router.callback_query(F.data == 'detailed_calculation', StateFilter(CalculatorFSM.result))
 async def process_detailed_calculation_press(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
-    calc_config = await load_calc_config_async()
+    calc_config = await load_user_calc_config_async()
 
     calc_year = data.get('year')
     display_year = data.get('original_year', calc_year)

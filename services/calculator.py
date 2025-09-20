@@ -1,40 +1,12 @@
 from services.cache import get_rates
-from config.config import CalcConfig
+from config.config import UserCalcConfig
+from config.rules_config import (
+    CUSTOMS_PAYMENTS_RATES,
+    RECYCLING_FEE_RATES,
+    CUSTOMS_CLEARANCE_FEES,
+    COUNTRY_CURRENCY_MAP,
+)
 
-CUSTOMS_PAYMENTS_RATES = {
-    'up_to_3': {
-        'by_cost': [
-            (8500, 0.54, 2.5), (16700, 0.48, 3.5), (42300, 0.48, 5.5),
-            (84500, 0.48, 7.5), (169000, 0.48, 15), (float('inf'), 0.48, 20)
-        ]
-    },
-    '3_to_5': {
-        'by_volume': [
-            (1000, 1.5), (1500, 1.7), (1800, 2.5), (2300, 2.7),
-            (3000, 3.0), (float('inf'), 3.6)
-        ]
-    },
-    '5_to_7': {
-        'by_volume': [
-            (1000, 3.0), (1500, 3.2), (1800, 3.5), (2300, 4.8),
-            (3000, 5.0), (float('inf'), 5.7)
-        ]
-    }
-}
-
-RECYCLING_FEE_RATES = {
-    'electric_hybrid': {'up_to_3': 3400, 'older': 5200},
-    'ice': {
-        'up_to_3': [(3000, 3400), (3500, 2153400), (float('inf'), 2742200)],
-        'older': [(3000, 5200), (3500, 3296800), (float('inf'), 3604800)]
-    }
-}
-
-CUSTOMS_CLEARANCE_FEES = [
-    (200000, 1067), (450000, 2134), (1200000, 4269), (2700000, 11746),
-    (4200000, 16524), (5500000, 21344), (7000000, 27540), (8000000, 30000),
-    (9000000, 30000), (10000000, 30000), (float('inf'), 30000)
-]
 
 def _get_rate_from_table(value, table):
     for limit, rate in table:
@@ -42,16 +14,18 @@ def _get_rate_from_table(value, table):
             return rate
     return table[-1][1]
 
+
 def _get_row_from_table(value, table):
     for row in table:
         if value <= row[0]:
             return row
     return table[-1]
 
+
 def _calculate_excise_tax(power_kw: float) -> float:
     if power_kw <= 67.5:
         return 0
-    
+
     power_hp = power_kw / 0.75  # Convert kW to hp
 
     if 67.5 < power_kw <= 112.5:
@@ -67,6 +41,7 @@ def _calculate_excise_tax(power_kw: float) -> float:
     else:  # power_kw > 375
         return power_hp * 1740
 
+
 def _calculate_customs_payments(age, cost_eur, volume, engine_type):
     if engine_type == 'electro':
         return cost_eur * 0.15
@@ -80,7 +55,7 @@ def _calculate_customs_payments(age, cost_eur, volume, engine_type):
         age_category = '5_to_7'
 
     rates = CUSTOMS_PAYMENTS_RATES.get(age_category, {})
-    
+
     if not rates:
         return 0
 
@@ -94,33 +69,32 @@ def _calculate_customs_payments(age, cost_eur, volume, engine_type):
         return rate_eur * volume
     return 0
 
+
 def _calculate_recycling_fee(age, volume, engine_type):
     fee_category = 'electric_hybrid' if engine_type == 'electro' else 'ice'
-    
+
     age_category = 'older'
     if age == 'year_less_3':
         age_category = 'up_to_3'
 
     rates = RECYCLING_FEE_RATES[fee_category]
-    
+
     if fee_category == 'electric_hybrid':
         return rates[age_category]
-    
+
     return _get_rate_from_table(volume, rates[age_category])
+
 
 def _calculate_customs_clearance(cost_rub):
     return _get_rate_from_table(cost_rub, CUSTOMS_CLEARANCE_FEES)
 
-COUNTRY_CURRENCY_MAP = {
-    'china': 'CNY',
-    'korea': 'KRW'
-}
 
-async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_config: CalcConfig, engine_type: str = 'ice', is_from_kazan: str | None = None, power: float = 0) -> dict:
+async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_config: UserCalcConfig,
+                         engine_type: str = 'ice', is_from_kazan: str | None = None, power: float = 0) -> dict:
     rates = await get_rates()
-    
+
     currency = COUNTRY_CURRENCY_MAP.get(country)
-    
+
     cost_rub = cost * rates.get(currency, 1.0)
     eur_rate = rates.get('EUR', 90.0)
     usd_rate = rates.get('USD', 90.0)
@@ -176,10 +150,10 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
             delivery_to_region_cost = calc_config.general.delivery_to_region_rub
 
     total_cost_rub = (
-        cost_rub + dealer_commission + customs_payments + recycling_fee +
-        customs_clearance + china_documents_delivery + logistics_cost + lab_svh_cost +
-        korea_inland_transport + korea_port_transport_loading + vladivostok_expenses +
-        logistics_vladivostok_kazan + car_preparation + other_expenses + excise_tax + delivery_to_region_cost
+            cost_rub + dealer_commission + customs_payments + recycling_fee +
+            customs_clearance + china_documents_delivery + logistics_cost + lab_svh_cost +
+            korea_inland_transport + korea_port_transport_loading + vladivostok_expenses +
+            logistics_vladivostok_kazan + car_preparation + other_expenses + excise_tax + delivery_to_region_cost
     )
 
     vat = 0

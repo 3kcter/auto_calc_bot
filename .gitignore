@@ -1,5 +1,5 @@
 .env
-calc_config.json
+user_calc_config.json
 
 .venv/
 .vscode/

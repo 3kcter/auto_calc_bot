@@ -11,7 +11,7 @@ from keyboards.admin_keyboards import (
     create_korea_admin_menu_keyboard,
     create_edit_keyboard
 )
-from config.config import load_calc_config, save_calc_config, Config
+from config.config import load_user_calc_config, save_user_calc_config, Config
 
 admin_router = Router()
 
@@ -36,7 +36,7 @@ async def process_exit_admin_press(callback: CallbackQuery, state: FSMContext):
 
 @admin_router.callback_query(F.data == 'admin_china', StateFilter(AdminFSM.select_country))
 async def process_admin_china_press(callback: CallbackQuery, state: FSMContext):
-    calc_config = load_calc_config()
+    calc_config = load_user_calc_config()
     await callback.message.edit_text(
         text=LEXICON_RU['admin_panel'],
         reply_markup=create_china_admin_menu_keyboard(calc_config)
@@ -45,7 +45,7 @@ async def process_admin_china_press(callback: CallbackQuery, state: FSMContext):
 
 @admin_router.callback_query(F.data == 'admin_korea', StateFilter(AdminFSM.select_country))
 async def process_admin_korea_press(callback: CallbackQuery, state: FSMContext):
-    calc_config = load_calc_config()
+    calc_config = load_user_calc_config()
     await callback.message.edit_text(
         text=LEXICON_RU['admin_panel'],
         reply_markup=create_korea_admin_menu_keyboard(calc_config)
@@ -74,7 +74,7 @@ async def process_edit_press(callback: CallbackQuery, state: FSMContext):
 @admin_router.callback_query(F.data.startswith('back_admin_'), StateFilter(AdminFSM.edit_param))
 async def process_back_admin_press(callback: CallbackQuery, state: FSMContext):
     country = callback.data.split('_')[-1]
-    calc_config = load_calc_config()
+    calc_config = load_user_calc_config()
     if country == 'china':
         await callback.message.edit_text(
             text=LEXICON_RU['admin_panel'],
@@ -95,13 +95,13 @@ async def process_new_value_sent(message: Message, state: FSMContext):
     new_value = message.text
 
     if new_value.isdigit():
-        calc_config = load_calc_config()
+        calc_config = load_user_calc_config()
         country_config = getattr(calc_config, country)
         setattr(country_config, field, int(new_value))
-        save_calc_config(calc_config)
+        save_user_calc_config(calc_config)
 
         await message.answer(text=LEXICON_RU['value_updated'])
-        calc_config = load_calc_config()
+        calc_config = load_user_calc_config()
         if country == 'china':
             await message.answer(
                 text=LEXICON_RU['admin_panel'],

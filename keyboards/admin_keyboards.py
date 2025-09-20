@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from lexicon.lexicon import LEXICON_RU
-from config.config import CalcConfig
+from config.config import UserCalcConfig
 
 def create_admin_country_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -14,7 +14,7 @@ def create_admin_country_keyboard() -> InlineKeyboardMarkup:
     )
     return builder.as_markup()
 
-def create_china_admin_menu_keyboard(calc_config: CalcConfig) -> InlineKeyboardMarkup:
+def create_china_admin_menu_keyboard(calc_config: UserCalcConfig) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for field, name in LEXICON_RU['calc_config_fields']['china'].items():
         builder.row(
@@ -25,7 +25,7 @@ def create_china_admin_menu_keyboard(calc_config: CalcConfig) -> InlineKeyboardM
     )
     return builder.as_markup()
 
-def create_korea_admin_menu_keyboard(calc_config: CalcConfig) -> InlineKeyboardMarkup:
+def create_korea_admin_menu_keyboard(calc_config: UserCalcConfig) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for field, name in LEXICON_RU['calc_config_fields']['korea'].items():
         builder.row(
