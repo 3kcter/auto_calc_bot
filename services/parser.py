@@ -4,6 +4,7 @@ import logging
 from bs4 import BeautifulSoup
 import aiohttp
 from playwright.async_api import async_playwright
+import random
 
 def validate_and_normalize_url(url: str) -> tuple[str | None, str | None]:
     if 'che168.com' in url:
