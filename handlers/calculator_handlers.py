@@ -1,5 +1,6 @@
 from aiogram import F, Router
 import re
+import html
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -54,7 +55,7 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
         data.get('power', 0)
     )
     
-    currency_symbol = COUNTRY_CURRENCY_SYMBOL_MAP.get(data['country'], '')
+    currency_symbol = html.escape(COUNTRY_CURRENCY_SYMBOL_MAP.get(data['country'], ''))
 
     # --- Build the new message ---
     
