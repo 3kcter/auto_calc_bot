@@ -1,6 +1,5 @@
 from aiogram import F, Router
 import re
-import html
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -55,7 +54,7 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
         data.get('power', 0)
     )
     
-    currency_symbol = html.escape(COUNTRY_CURRENCY_SYMBOL_MAP.get(data['country'], ''))
+    currency_symbol = (COUNTRY_CURRENCY_SYMBOL_MAP.get(data['country'], ''))
 
     # --- Build the new message ---
     
@@ -68,14 +67,14 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
     year_str = str(display_year)
     if display_month and isinstance(display_year, int):
         year_str = f"{display_year}-{display_month:02d}"
-    params_lines.append(f"📅 Год выпуска: {html.escape(year_str)}")
+    params_lines.append(f"📅 Год выпуска: {(year_str)}")
     # Volume
     if data.get('volume', 0) > 0:
         params_lines.append(f"⚙️ Объём двигателя: {data['volume']} см³")
     # Power
     if data.get('power'):
-        power_unit = html.escape(data.get('power_unit', 'кВт'))
-        power_display = html.escape(str(data.get('power_display', data['power'])))
+        power_unit = data.get('power_unit', 'кВт')
+        power_display = str(data.get('power_display', data['power']))
         params_lines.append(f"⚡️ Мощность: {power_display} {power_unit}")
 
     params_section = "\n".join(params_lines)
