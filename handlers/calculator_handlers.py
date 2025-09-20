@@ -1,7 +1,6 @@
 from aiogram import F, Router
 import re
 import html
-import html
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
