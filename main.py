@@ -40,9 +40,7 @@ async def main():
     dp.include_router(admin_router)
     dp.include_router(common_router)
     dp.include_router(calculator_router)
-    
-    dp.include_router(url_router)
-    
+    dp.include_router(url_router)   
     dp.include_router(rates_router)
 
     await bot.delete_webhook(drop_pending_updates=True)

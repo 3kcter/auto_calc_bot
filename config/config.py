@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass, asdict
 from environs import Env
 import json
@@ -51,7 +52,13 @@ class Config:
     log: LogSettings
     calc: UserCalcConfig
 
-def load_user_calc_config(path: str = 'user_calc_config.json') -> UserCalcConfig:
+def get_project_root() -> str:
+    """Returns project root folder."""
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+def load_user_calc_config(path: str = 'config/user_calc_config.json') -> UserCalcConfig:
+    if not os.path.isabs(path):
+        path = os.path.join(get_project_root(), path)
     with open(path, 'r') as f:
         data = json.load(f)
         return UserCalcConfig(
@@ -60,7 +67,9 @@ def load_user_calc_config(path: str = 'user_calc_config.json') -> UserCalcConfig
             general=GeneralConfig(**data['general'])
         )
 
-async def load_user_calc_config_async(path: str = 'user_calc_config.json') -> UserCalcConfig:
+async def load_user_calc_config_async(path: str = 'config/user_calc_config.json') -> UserCalcConfig:
+    if not os.path.isabs(path):
+        path = os.path.join(get_project_root(), path)
     async with aiofiles.open(path, 'r', encoding='utf-8') as f:
         data = json.loads(await f.read())
         return UserCalcConfig(
@@ -69,11 +78,15 @@ async def load_user_calc_config_async(path: str = 'user_calc_config.json') -> Us
             general=GeneralConfig(**data['general'])
         )
 
-def save_user_calc_config(config: UserCalcConfig, path: str = 'user_calc_config.json'):
+def save_user_calc_config(config: UserCalcConfig, path: str = 'config/user_calc_config.json'):
+    if not os.path.isabs(path):
+        path = os.path.join(get_project_root(), path)
     with open(path, 'w') as f:
         json.dump(asdict(config), f, indent=4)
 
-async def save_user_calc_config_async(config: UserCalcConfig, path: str = 'user_calc_config.json'):
+async def save_user_calc_config_async(config: UserCalcConfig, path: str = 'config/user_calc_config.json'):
+    if not os.path.isabs(path):
+        path = os.path.join(get_project_root(), path)
     async with aiofiles.open(path, 'w', encoding='utf-8') as f:
         await f.write(json.dumps(asdict(config), indent=4))
 

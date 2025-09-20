@@ -10,8 +10,7 @@ config: Config = load_config()
 def create_main_menu_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text=LEXICON_RU['calculator'], callback_data='calculator'),
-        InlineKeyboardButton(text=LEXICON_RU['exchange_rates'], callback_data='exchange_rates')
+        InlineKeyboardButton(text=LEXICON_RU['calculator'], callback_data='calculator')
     )
     builder.row(
         InlineKeyboardButton(text=LEXICON_RU['calculate_by_url'], callback_data='calculate_by_url')
@@ -119,12 +118,8 @@ def create_kazan_question_url_keyboard() -> InlineKeyboardMarkup:
     )
     return builder.as_markup()
 
-def create_rates_keyboard() -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    builder.row(
-        InlineKeyboardButton(text=LEXICON_RU['back'], callback_data='exit')
-    )
-    return builder.as_markup()
+def create_rates_keyboard() -> None:
+    return None
 
 channel_keyboard = InlineKeyboardMarkup(
     inline_keyboard=[

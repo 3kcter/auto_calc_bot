@@ -1,0 +1,11 @@
+{
+    "china": {
+        "shipment": 11111
+    },
+    "korea": {
+        "other_expenses_rub": 0
+    },
+    "general": {
+        "delivery": 40000
+    }
+}

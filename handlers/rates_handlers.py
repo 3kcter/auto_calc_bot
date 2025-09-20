@@ -1,5 +1,6 @@
 from aiogram import Router, F
-from aiogram.types import CallbackQuery
+from aiogram.filters import Command
+from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 
 from lexicon.lexicon import LEXICON_RU
@@ -8,9 +9,9 @@ from keyboards.keyboards import create_rates_keyboard
 
 rates_router = Router()
 
-@rates_router.callback_query(F.data == 'exchange_rates')
-async def process_rates_press(callback: CallbackQuery, state: FSMContext):
-    await callback.message.delete()
+@rates_router.message(Command(commands=['exchange']))
+async def process_rates_press(message: Message, state: FSMContext):
+    await message.delete()
     rates = await get_rates()
 
     def format_rate(currency_code):
@@ -25,8 +26,7 @@ async def process_rates_press(callback: CallbackQuery, state: FSMContext):
     rates_text += f"{format_rate('CNY')}\n"
     rates_text += f"{format_rate('KRW')}\n"
 
-    await callback.message.answer(
+    await message.answer(
         text=rates_text,
         reply_markup=create_rates_keyboard()
     )
-    await callback.answer()
