@@ -18,7 +18,6 @@ def create_main_menu_keyboard() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-
 def create_year_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
@@ -62,7 +61,7 @@ def create_volume_keyboard() -> InlineKeyboardMarkup:
 def create_after_calculation_keyboard(is_admin: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text=LEXICON_RU['calculate_another_car'], callback_data='/start')
+        InlineKeyboardButton(text=LEXICON_RU['calculate_another_car'], callback_data='restart_calculation')
     )
     builder.row(
         InlineKeyboardButton(text="💬 Связаться с менеджером", url="https://t.me/makauto_manager")
@@ -73,6 +72,13 @@ def create_after_calculation_keyboard(is_admin: bool = False) -> InlineKeyboardM
         )
     return builder.as_markup()
 
+def create_restart_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text=LEXICON_RU['calculator'], callback_data='calculator'),
+        InlineKeyboardButton(text=LEXICON_RU['calculate_by_url'], callback_data='calculate_by_url')
+    )
+    return builder.as_markup()
 
 def create_engine_type_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()

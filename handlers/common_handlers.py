@@ -6,7 +6,7 @@ from aiogram.enums import ChatMemberStatus
 from aiogram import F
 
 from lexicon.lexicon import LEXICON_RU
-from keyboards.keyboards import channel_keyboard
+from keyboards.keyboards import channel_keyboard, create_restart_keyboard
 from handlers.calculator_handlers import CalculatorFSM
 from services.menu_utils import send_start_menu
 from config.config import Config
@@ -56,3 +56,10 @@ async def process_start_callback(callback: CallbackQuery, state: FSMContext, bot
         )
     await callback.answer()
 
+@common_router.callback_query(F.data == 'restart_calculation')
+async def process_restart_calculation(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_text(
+        text="Выберите способ расчета:",
+        reply_markup=create_restart_keyboard()
+    )
+    await callback.answer()
