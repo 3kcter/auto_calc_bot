@@ -152,12 +152,12 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
     year_str = str(display_year)
     if display_month and isinstance(display_year, int):
         year_str = f"{display_year}-{display_month:02d}"
-    params_lines.append(f"📅 Год выпуска: {year_str}")
+    params_lines.append(f"📅 Год выпуска: {html.escape(year_str)}")
     if data.get('volume', 0) > 0:
         params_lines.append(f"⚙️ Объём двигателя: {data['volume']} см³")
     if data.get('power'):
-        power_unit = data.get('power_unit', 'кВт')
-        power_display = data.get('power_display', data['power'])
+        power_unit = html.escape(data.get('power_unit', 'кВт'))
+        power_display = html.escape(str(data.get('power_display', data['power'])))
         params_lines.append(f"⚡️ Мощность: {power_display} {power_unit}")
     params_section = "\n".join(params_lines)
 
