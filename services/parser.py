@@ -71,6 +71,26 @@ async def parse_encar_playwright(url: str) -> tuple[dict, str | None]:
             else:
                 error = "Could not find __PRELOADED_STATE__ in page."
                 logging.warning(error)
+                try:
+                    html_content = await page.content()
+                    import datetime
+                    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                    filename = f"encar_error_page_{timestamp}.html"
+                    with open(filename, "w", encoding="utf-8") as f:
+                        f.write(html_content)
+                    logging.info(f"Saved HTML content of the error page to {filename}")
+                except Exception as save_e:
+                    logging.error(f"Failed to save error page HTML: {save_e}")
+                try:
+                    html_content = await page.content()
+                    import datetime
+                    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                    filename = f"encar_error_page_{timestamp}.html"
+                    with open(filename, "w", encoding="utf-8") as f:
+                        f.write(html_content)
+                    logging.info(f"Saved HTML content of the error page to {filename}")
+                except Exception as save_e:
+                    logging.error(f"Failed to save error page HTML: {save_e}")
 
             required_fields = ['year', 'cost', 'car_name', 'mileage']
             if data.get('engine_type') != 'electro':
