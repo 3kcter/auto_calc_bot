@@ -115,6 +115,7 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
 
     is_admin = user_id in config.bot.admin_ids
 
+    logging.info(f"Output text: {output_text}")
     await target_message.answer(
         text=output_text,
         reply_markup=create_after_calculation_keyboard(is_admin=is_admin),
