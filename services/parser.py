@@ -72,7 +72,11 @@ async def parse_encar_playwright(url: str) -> tuple[dict, str | None]:
                 error = "Could not find __PRELOADED_STATE__ in page."
                 logging.warning(error)
 
-            if not all(data.get(k) for k in ['year', 'cost', 'volume', 'car_name', 'mileage']):
+            required_fields = ['year', 'cost', 'car_name', 'mileage']
+            if data.get('engine_type') != 'electro':
+                required_fields.append('volume')
+
+            if not all(data.get(k) for k in required_fields):
                 if not error:
                     error = "Не удалось извлечь все данные из __PRELOADED_STATE__."
                 logging.error(f"Failed to parse all required data from encar.com. Data: {data}")
