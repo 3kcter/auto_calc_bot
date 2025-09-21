@@ -1,11 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from lexicon.lexicon import LEXICON_RU
-from config.config import Config, load_config
-
-import os
-
-config: Config = load_config()
+from config.config import Config
 
 def create_main_menu_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -127,8 +123,9 @@ def create_kazan_question_url_keyboard() -> InlineKeyboardMarkup:
 def create_rates_keyboard() -> None:
     return None
 
-channel_keyboard = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [InlineKeyboardButton(text=LEXICON_RU['channel_button'], url=config.bot.channel_url)]
-    ]
-)
+def create_channel_keyboard(config: Config) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=LEXICON_RU['channel_button'], url=config.bot.channel_url)]
+        ]
+    )

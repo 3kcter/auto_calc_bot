@@ -23,22 +23,24 @@ def _get_row_from_table(value, table):
 
 
 def _calculate_excise_tax(power_kw: float) -> float:
-    if power_kw <= 67.5:
+    if power_kw == 0:
         return 0
 
-    power_hp = power_kw / 0.75  # Convert kW to hp
+    power_hp = power_kw / 0.7355
 
-    if 67.5 < power_kw <= 112.5:
+    if power_hp <= 90:
+        return 0
+    elif 90 < power_hp <= 150:
         return power_hp * 61
-    elif 112.5 < power_kw <= 150:
-        return power_hp * 583
-    elif 150 < power_kw <= 225:
+    elif 150 < power_hp <= 200:
+        return power_hp * 574
+    elif 200 < power_hp <= 300:
         return power_hp * 955
-    elif 225 < power_kw <= 300:
+    elif 300 < power_hp <= 400:
         return power_hp * 1628
-    elif 300 < power_kw <= 375:
+    elif 400 < power_hp <= 500:
         return power_hp * 1685
-    else:  # power_kw > 375
+    else:  # power_hp > 500
         return power_hp * 1740
 
 
@@ -60,7 +62,7 @@ def _calculate_customs_payments(age, cost_eur, volume, engine_type):
         return 0
 
     if 'by_cost' in rates:
-        # For cars up to 3 years old, the calculation is per euro of cost or per cm3 of volume
+        
         rate_info = _get_row_from_table(cost_eur, rates['by_cost'])
         return max(cost_eur * rate_info[1], rate_info[2] * volume)
 
@@ -112,7 +114,7 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
     if engine_type == 'electro':
         excise_tax = _calculate_excise_tax(power)
 
-    # Initialize all possible costs to 0
+    
     delivery_to_region_cost = 0
     dealer_commission = 0
     china_documents_delivery = 0
@@ -145,7 +147,7 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
         logistics_vladivostok_kazan = korea_config.logistics_vladivostok_kazan_rub
         car_preparation = korea_config.car_preparation_rub
         other_expenses = korea_config.other_expenses_rub
-        # For Korea, delivery to region is a general cost, not replacing anything
+        
         if is_from_kazan == 'no':
             delivery_to_region_cost = calc_config.general.delivery_to_region_rub
 
@@ -157,11 +159,9 @@ async def calculate_cost(age: str, cost: int, country: str, volume: int, calc_co
     )
 
     vat = 0
-    # if engine_type == 'electro':
-    #     vat = (cost_rub + customs_payments) * 0.20
-    #     total_cost_rub += vat
+    
 
-    # Convert total_cost_rub back to original currency
+    
     rate_to_original_currency = rates.get(currency, 1.0)
     total_cost_original_currency = total_cost_rub / rate_to_original_currency
 

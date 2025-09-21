@@ -53,21 +53,9 @@ class Config:
     calc: UserCalcConfig
 
 def get_project_root() -> str:
-    """Returns project root folder."""
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-def load_user_calc_config(path: str = 'config/user_calc_config.json') -> UserCalcConfig:
-    if not os.path.isabs(path):
-        path = os.path.join(get_project_root(), path)
-    with open(path, 'r') as f:
-        data = json.load(f)
-        return UserCalcConfig(
-            china=ChinaConfig(**data['china']),
-            korea=KoreaConfig(**data['korea']),
-            general=GeneralConfig(**data['general'])
-        )
-
-async def load_user_calc_config_async(path: str = 'config/user_calc_config.json') -> UserCalcConfig:
+async def load_user_calc_config(path: str = 'config/user_calc_config.json') -> UserCalcConfig:
     if not os.path.isabs(path):
         path = os.path.join(get_project_root(), path)
     async with aiofiles.open(path, 'r', encoding='utf-8') as f:
@@ -78,21 +66,17 @@ async def load_user_calc_config_async(path: str = 'config/user_calc_config.json'
             general=GeneralConfig(**data['general'])
         )
 
-def save_user_calc_config(config: UserCalcConfig, path: str = 'config/user_calc_config.json'):
-    if not os.path.isabs(path):
-        path = os.path.join(get_project_root(), path)
-    with open(path, 'w') as f:
-        json.dump(asdict(config), f, indent=4)
-
-async def save_user_calc_config_async(config: UserCalcConfig, path: str = 'config/user_calc_config.json'):
+async def save_user_calc_config(config: UserCalcConfig, path: str = 'config/user_calc_config.json'):
     if not os.path.isabs(path):
         path = os.path.join(get_project_root(), path)
     async with aiofiles.open(path, 'w', encoding='utf-8') as f:
         await f.write(json.dumps(asdict(config), indent=4))
 
-def load_config(path: str | None = None) -> Config:
+async def load_config(path: str | None = None) -> Config:
     env: Env = Env()
     env.read_env(path)
+
+    calc_config = await load_user_calc_config()
 
     return Config(
         bot=TgBot(
@@ -102,5 +86,5 @@ def load_config(path: str | None = None) -> Config:
             channel_url=env('CHANNEL_URL')
         ),
         log=LogSettings(level=env('LOG_LEVEL'), format=env('LOG_FORMAT')),
-        calc=load_user_calc_config()
+        calc=calc_config
     )

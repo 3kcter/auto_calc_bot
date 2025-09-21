@@ -95,9 +95,9 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
                  return
 
             if car_data.get('year') is not None:
-                car_data['original_year'] = car_data['year'] # Save original year
+                car_data['original_year'] = car_data['year'] 
                 age_val = get_age_category_val(car_data['year'], car_data.get('month', 1))
-                car_data['year'] = age_val # Overwrite with category for the calculator
+                car_data['year'] = age_val 
                 car_data['age_category'] = get_age_category_display(age_val)
             
             await state.update_data(**car_data)

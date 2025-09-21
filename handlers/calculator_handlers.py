@@ -14,7 +14,10 @@ from keyboards.keyboards import (
 )
 from services.calculator import calculate_cost
 from services.menu_utils import send_start_menu
-from config.config import load_user_calc_config_async, Config
+from config.config import load_user_calc_config, Config
+
+def format_number(n):
+    return f"{n:,}".replace(",", " ")
 
 calculator_router = Router()
 
@@ -30,48 +33,27 @@ class CalculatorFSM(StatesGroup):
     url = State()
     result = State()
 
-COUNTRY_CURRENCY_SYMBOL_MAP = {
-    'china': '¥', # Yuan symbol
-    'korea': '₩'  # Won symbol
+COUNTRY_INFO = {
+    'china': {'symbol': '¥', 'name': 'юанях'},
+    'korea': {'symbol': '₩', 'name': 'вонах'}
 }
 
-async def send_calculation_result(message_or_callback, state: FSMContext, config: Config):
-    data = await state.get_data()
-    calc_config = await load_user_calc_config_async()
-    
-    # Use the category for calculation, but the original year for display
-    calc_year = data.get('year') # This is the category, e.g., 'year_3_5'
-    display_year = data.get('original_year', calc_year) # Fallback to category if original_year is not present
-    
-    costs = await calculate_cost(
-        calc_year, 
-        data['cost'], 
-        data['country'], 
-        data.get('volume', 0), 
-        calc_config, 
-        data['engine_type'], 
-        data.get('is_from_kazan'), 
-        data.get('power', 0)
-    )
-    
-    currency_symbol = (COUNTRY_CURRENCY_SYMBOL_MAP.get(data['country'], ''))
+def get_calculation_details(data, costs):
+    currency_symbol = (COUNTRY_INFO.get(data['country'], {}).get('symbol', ''))
 
-    # --- Build the new message ---
-    
     params_lines = []
-    # Car Cost
     if data.get('cost'):
-        params_lines.append(f"💰 Стоимость: {data['cost']:,} {currency_symbol}".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
-    # Year
+        params_lines.append(f"💰 Стоимость: {format_number(data['cost'])} {currency_symbol}")
+    
     display_month = data.get('month')
-    year_str = str(display_year)
-    if display_month and isinstance(display_year, int):
-        year_str = f"{display_year}-{display_month:02d}"
+    year_str = str(data.get('original_year', data.get('year')))
+    if display_month and isinstance(data.get('original_year'), int):
+        year_str = f"{data.get('original_year')}-{display_month:02d}"
     params_lines.append(f"📅 Год выпуска: {(year_str)}")
-    # Volume
+    
     if data.get('volume', 0) > 0:
         params_lines.append(f"⚙️ Объём двигателя: {data['volume']} см³")
-    # Power
+    
     if data.get('power'):
         power_unit = data.get('power_unit', 'кВт')
         power_display = str(data.get('power_display', data['power']))
@@ -80,18 +62,38 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
     params_section = "\n".join(params_lines)
 
     payments_lines = [
-        f"🇷🇺 Таможенная пошлина: {round(costs['customs_payments']):,} руб.".replace(',', ' '), # Corrected: Removed unnecessary .replace(',', ' ')
-        f"📑 Таможенный сбор: {round(costs['customs_clearance']):,} руб.".replace(',', ' '), # Corrected: Removed unnecessary .replace(',', ' ')
-        f"♻️ Утилизационный сбор: {costs['recycling_fee']:,} руб.".replace(',', ' ')
+        f"🇷🇺 Таможенная пошлина: {format_number(round(costs['customs_payments']))} руб.",
+        f"📑 Таможенный сбор: {format_number(round(costs['customs_clearance']))} руб.",
+        f"♻️ Утилизационный сбор: {format_number(costs['recycling_fee'])} руб."
     ]
     if costs.get('excise_tax', 0) > 0:
-        payments_lines.insert(2, f"💸 Акциз: {round(costs['excise_tax']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
+        payments_lines.insert(2, f"💸 Акциз: {format_number(round(costs['excise_tax']))} руб.")
     if costs.get('vat', 0) > 0:
-        payments_lines.append(f"📊 НДС: {round(costs['vat']):,} руб.".replace(',', ' ')) # Corrected: Removed unnecessary .replace(',', ' ')
+        payments_lines.append(f"📊 НДС: {format_number(round(costs['vat']))} руб.")
 
     payments_section = "\n".join(payments_lines)
 
-    total_cost_rub_formatted = f"{round(costs['total_cost_rub']):,}".replace(',', ' ') # Corrected: Removed unnecessary .replace(',', ' ')
+    total_cost_rub_formatted = format_number(round(costs['total_cost_rub']))
+
+    return params_section, payments_section, total_cost_rub_formatted
+
+
+async def send_calculation_result(message_or_callback, state: FSMContext, config: Config):
+    data = await state.get_data()
+    calc_config = await load_user_calc_config()
+    
+    costs = await calculate_cost(
+        data.get('year'), 
+        data['cost'], 
+        data['country'], 
+        data.get('volume', 0), 
+        calc_config, 
+        data['engine_type'], 
+        data.get('is_from_kazan'), 
+        data.get('power', 0)
+    )
+
+    params_section, payments_section, total_cost_rub_formatted = get_calculation_details(data, costs)
     
     output_text = (
         f"📋<b>Итоги расчёта для вашего авто</b>📋 \n\n"
@@ -107,7 +109,7 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
     if isinstance(message_or_callback, Message):
         target_message = message_or_callback
         user_id = target_message.from_user.id
-    else: # it's a CallbackQuery
+    else: 
         target_message = message_or_callback.message
         user_id = message_or_callback.from_user.id
 
@@ -124,13 +126,10 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
 @calculator_router.callback_query(F.data == 'detailed_calculation', StateFilter(CalculatorFSM.result))
 async def process_detailed_calculation_press(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
-    calc_config = await load_user_calc_config_async()
-
-    calc_year = data.get('year')
-    display_year = data.get('original_year', calc_year)
+    calc_config = await load_user_calc_config()
 
     costs = await calculate_cost(
-        calc_year,
+        data.get('year'),
         data['cost'],
         data['country'],
         data.get('volume', 0),
@@ -140,65 +139,32 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
         data.get('power', 0)
     )
 
-    currency_symbol = COUNTRY_CURRENCY_SYMBOL_MAP.get(data['country'], '')
+    params_section, main_payments_section, total_cost_rub_formatted = get_calculation_details(data, costs)
 
-    # --- Parameters Section ---
-    params_lines = []
-    if data.get('cost'):
-        params_lines.append(f"💰 Стоимость: {data['cost']:,} {currency_symbol}".replace(',', ' '))
-    display_month = data.get('month')
-    year_str = str(display_year)
-    if display_month and isinstance(display_year, int):
-        year_str = f"{display_year}-{display_month:02d}"
-    params_lines.append(f"📅 Год выпуска: {year_str}")
-    if data.get('volume', 0) > 0:
-        params_lines.append(f"⚙️ Объём двигателя: {data['volume']} см³")
-    if data.get('power'):
-        power_unit = data.get('power_unit', 'кВт')
-        power_display = data.get('power_display', data['power'])
-        params_lines.append(f"⚡️ Мощность: {power_display} {power_unit}")
-    params_section = "\n".join(params_lines)
-
-    # --- Main Payments Section ---
-    main_payments_lines = [
-        f"🇷🇺 Таможенная пошлина: {round(costs['customs_payments']):,} руб.".replace(',', ' '),
-        f"📑 Таможенный сбор: {round(costs['customs_clearance']):,} руб.".replace(',', ' '),
-        f"♻️ Утилизационный сбор: {costs['recycling_fee']:,} руб.".replace(',', ' ')
-    ]
-    if costs.get('excise_tax', 0) > 0:
-        main_payments_lines.insert(2, f"💸 Акциз: {round(costs['excise_tax']):,} руб.".replace(',', ' '))
-    if costs.get('vat', 0) > 0:
-        main_payments_lines.append(f"📊 НДС: {round(costs['vat']):,} руб.".replace(',', ' '))
-    main_payments_section = "\n".join(main_payments_lines)
-
-    # --- Additional Expenses Section ---
     additional_expenses_lines = []
     if data['country'] == 'korea':
-        additional_expenses_lines.append(f"🇰🇷 Комиссия дилера: {round(costs['dealer_commission']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"🚛 Транспорт по Корее: {round(costs['korea_inland_transport']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"🚢 Погрузка и фрахт: {round(costs['korea_port_transport_loading']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"🇷🇺 Расходы по Владивостоку: {round(costs['vladivostok_expenses']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"🚚 Доставка до вашего города: {round(costs['logistics_vladivostok_kazan']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"🧼 Подготовка авто: {round(costs['car_preparation']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"📎 Прочие расходы: {round(costs['other_expenses']):,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🇰🇷 Комиссия дилера: {format_number(round(costs['dealer_commission']))} руб.")
+        additional_expenses_lines.append(f"🚛 Транспорт по Корее: {format_number(round(costs['korea_inland_transport']))} руб.")
+        additional_expenses_lines.append(f"🚢 Погрузка и фрахт: {format_number(round(costs['korea_port_transport_loading']))} руб.")
+        additional_expenses_lines.append(f"🇷🇺 Расходы по Владивостоку: {format_number(round(costs['vladivostok_expenses']))} руб.")
+        additional_expenses_lines.append(f"🚚 Доставка до вашего города: {format_number(round(costs['logistics_vladivostok_kazan']))} руб.")
+        additional_expenses_lines.append(f"📎 Прочие расходы: {format_number(round(costs['other_expenses']))} руб.")
     elif data['country'] == 'china':
-        additional_expenses_lines.append(f"🇨🇳 Комиссия дилера: {round(costs['dealer_commission']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"📦 Доставка документов: {round(costs['china_documents_delivery']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"🚚 Логистика: {round(costs['logistics_cost']):,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🇨🇳 Комиссия дилера: {format_number(round(costs['dealer_commission']))} руб.")
+        additional_expenses_lines.append(f"📦 Доставка документов: {format_number(round(costs['china_documents_delivery']))} руб.")
+        additional_expenses_lines.append(f"🚚 Логистика: {format_number(round(costs['logistics_cost']))} руб.")
         if costs.get('lab_svh_cost', 0) > 0:
-            additional_expenses_lines.append(f"🔬 Лаборатория и СВХ: {round(costs['lab_svh_cost']):,} руб.".replace(',', ' '))
-        additional_expenses_lines.append(f"📎 Прочие расходы: {round(costs['other_expenses']):,} руб.".replace(',', ' '))
+            additional_expenses_lines.append(f"🔬 Лаборатория и СВХ: {format_number(round(costs['lab_svh_cost']))} руб.")
+        additional_expenses_lines.append(f"📎 Прочие расходы: {format_number(round(costs['other_expenses']))} руб.")
 
     if costs.get('delivery_to_region_cost', 0) > 0:
         label = LEXICON_RU['lab_svh_not_kazan_rub']
-        additional_expenses_lines.append(f"🔬 {label}: {round(costs['delivery_to_region_cost']):,} руб.".replace(',', ' '))
+        additional_expenses_lines.append(f"🔬 {label}: {format_number(round(costs['delivery_to_region_cost']))} руб.")
     
     additional_expenses_section = "\n".join(additional_expenses_lines)
     country_name = "Корея" if data['country'] == 'korea' else "Китай"
 
-    total_cost_rub_formatted = f"{round(costs['total_cost_rub']):,}".replace(',', ' ')
-
-    # --- Build Final Message ---
+    
     output_text = (
         f"📋<b>Детальный расчёт для вашего авто</b>📋\n\n"
         f"<b>Параметры:</b>\n\n{params_section}\n\n"
@@ -259,7 +225,7 @@ async def process_back_press(callback: CallbackQuery, state: FSMContext):
             await callback.message.edit_text(text=LEXICON_RU['select_volume'], reply_markup=create_volume_keyboard())
             await state.set_state(CalculatorFSM.volume)
     elif current_state == CalculatorFSM.is_from_kazan:
-        currency_text = COUNTRY_CURRENCY_MAP.get(data['country'], '')
+        currency_text = COUNTRY_INFO.get(data['country'], {}).get('name', '')
         await callback.message.edit_text(text=f"{LEXICON_RU['enter_cost']} {currency_text}", reply_markup=create_cost_keyboard())
         await state.set_state(CalculatorFSM.cost)
 
@@ -269,7 +235,7 @@ async def process_back_press(callback: CallbackQuery, state: FSMContext):
 async def process_year_sent(callback: CallbackQuery, state: FSMContext):
     year_category = callback.data
     year_display = LEXICON_RU.get(year_category, year_category)
-    await state.update_data(year=year_category, original_year=year_display) # Use original_year to store the display text
+    await state.update_data(year=year_category, original_year=year_display) 
     await callback.message.edit_text(
         text=f"{LEXICON_RU['select_engine_type']}",
         reply_markup=create_engine_type_keyboard()
@@ -310,10 +276,7 @@ async def process_hybrid_type_press(callback: CallbackQuery, state: FSMContext):
     await state.set_state(CalculatorFSM.country)
     await callback.answer()
 
-COUNTRY_CURRENCY_MAP = {
-    'china': 'юанях',
-    'korea': 'вонах'
-}
+
 
 @calculator_router.callback_query(StateFilter(CalculatorFSM.country))
 async def process_country_sent(callback: CallbackQuery, state: FSMContext):
@@ -324,7 +287,7 @@ async def process_country_sent(callback: CallbackQuery, state: FSMContext):
     if data['engine_type'] == 'electro' or data.get('hybrid_type') == 'sequential_hybrid':
         await callback.message.edit_text(
             text=LEXICON_RU['enter_power'],
-            reply_markup=create_cost_keyboard() # Reuse cost keyboard for back button
+            reply_markup=create_cost_keyboard()
         )
         await state.update_data(prompt_message_id=callback.message.message_id)
         await state.set_state(CalculatorFSM.power)
@@ -351,7 +314,7 @@ async def process_kazan_question_answer(callback: CallbackQuery, state: FSMConte
     if prompt_message_id:
         try:
             await callback.message.bot.delete_message(chat_id=callback.message.chat.id, message_id=prompt_message_id)
-        except TelegramAPIError: # message might be already deleted
+        except TelegramAPIError: 
             pass
             
     await send_calculation_result(callback, state, config)
@@ -395,7 +358,7 @@ async def process_power_sent(message: Message, state: FSMContext):
             power_value_kw = power_kw_val
             power_unit_display = 'кВт'
             await state.update_data(power_display=power_kw_val)
-        else: # is_hp
+        else: 
             power_hp_val = float(re.sub(r'[^0-9.]', '', power_text))
             power_value_kw = power_hp_val * 0.7355
             power_unit_display = 'л.с.'
@@ -403,7 +366,7 @@ async def process_power_sent(message: Message, state: FSMContext):
 
 
         
-        currency_text = COUNTRY_CURRENCY_MAP.get(data['country'], '')
+        currency_text = COUNTRY_INFO.get(data['country'], {}).get('name', '')
         
         if prompt_message_id:
             await message.bot.edit_message_text(
@@ -426,7 +389,7 @@ async def process_power_sent(message: Message, state: FSMContext):
                 text=LEXICON_RU['not_a_number'],
                 chat_id=message.chat.id,
                 message_id=prompt_message_id,
-                reply_markup=create_cost_keyboard() # Reuse cost keyboard for back button
+                reply_markup=create_cost_keyboard()
             )
         else:
             await message.answer(text=LEXICON_RU['not_a_number'])
@@ -477,9 +440,9 @@ async def process_volume_sent(message: Message, state: FSMContext):
 
     if message.text.isdigit():
         await state.update_data(volume=int(message.text))
-        data = await state.get_data() # re-get data
+        data = await state.get_data() 
         
-        currency_text = COUNTRY_CURRENCY_MAP.get(data['country'], '')
+        currency_text = COUNTRY_INFO.get(data['country'], {}).get('name', '')
         
         if prompt_message_id:
             await message.bot.edit_message_text(

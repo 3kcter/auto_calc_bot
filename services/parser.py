@@ -113,9 +113,6 @@ async def parse_encar_playwright(url: str) -> tuple[dict, str | None]:
     return data, error
 
 async def parse_encar_requests(url: str) -> tuple[dict, str | None]:
-    """
-    Парсит данные об автомобиле с encar.com, используя Playwright.
-    """
     return await parse_encar_playwright(url)
 
 def parse_che168_requests(html_content: str) -> tuple[dict, str | None]:
@@ -195,7 +192,6 @@ def parse_che168_requests(html_content: str) -> tuple[dict, str | None]:
     return data, error
 
 def _find_spec_value(soup: BeautifulSoup, label_text: str) -> str | None:
-    """Finds a spec value based on its label text."""
     try:
         label_tag = soup.find(lambda tag: tag.name and label_text in tag.text)
         if not label_tag:

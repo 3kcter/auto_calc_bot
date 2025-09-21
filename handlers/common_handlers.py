@@ -6,7 +6,7 @@ from aiogram.enums import ChatMemberStatus
 from aiogram import F
 
 from lexicon.lexicon import LEXICON_RU
-from keyboards.keyboards import channel_keyboard, create_restart_keyboard
+from keyboards.keyboards import create_channel_keyboard, create_restart_keyboard
 from handlers.calculator_handlers import CalculatorFSM
 from services.menu_utils import send_start_menu
 from config.config import Config
@@ -27,7 +27,7 @@ async def process_start_command(message: Message, state: FSMContext, bot: Bot, c
     else:
         await message.answer(
             text=LEXICON_RU['subscription_required'],
-            reply_markup=channel_keyboard
+            reply_markup=create_channel_keyboard(config)
         )
 
 @common_router.callback_query(lambda c: c.data == 'exit')
@@ -52,7 +52,7 @@ async def process_start_callback(callback: CallbackQuery, state: FSMContext, bot
     else:
         await callback.message.answer(
             text=LEXICON_RU['subscription_required'],
-            reply_markup=channel_keyboard
+            reply_markup=create_channel_keyboard(config)
         )
     await callback.answer()
 

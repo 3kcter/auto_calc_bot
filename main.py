@@ -18,7 +18,7 @@ from middlewares.subscription_middleware import SubscriptionMiddleware
 
 
 async def main():
-    config: Config = load_config()
+    config: Config = await load_config()
 
     logging.basicConfig(
         level=logging.getLevelName(level=config.log.level),
@@ -30,8 +30,8 @@ async def main():
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
     dp = Dispatcher(config=config)
-    dp.message.middleware(SubscriptionMiddleware())
-    dp.callback_query.middleware(SubscriptionMiddleware())
+    dp.message.middleware(SubscriptionMiddleware(config=config))
+    dp.callback_query.middleware(SubscriptionMiddleware(config=config))
 
     await set_menu(bot)
 
