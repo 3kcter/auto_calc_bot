@@ -357,12 +357,12 @@ async def process_power_sent(message: Message, state: FSMContext):
             power_kw_val = float(re.sub(r'[^0-9.]', '', power_text))
             power_value_kw = power_kw_val
             power_unit_display = 'кВт'
-            await state.update_data(power_display=power_kw_val)
+            await state.update_data(power=power_value_kw, power_unit=power_unit_display, power_display=power_kw_val)
         else: 
             power_hp_val = float(re.sub(r'[^0-9.]', '', power_text))
             power_value_kw = power_hp_val * 0.7355
             power_unit_display = 'л.с.'
-            await state.update_data(power_display=power_hp_val)
+            await state.update_data(power=power_value_kw, power_unit=power_unit_display, power_display=power_hp_val)
 
 
         
