@@ -33,7 +33,7 @@ async def main():
     dp.message.middleware(SubscriptionMiddleware(config=config))
     dp.callback_query.middleware(SubscriptionMiddleware(config=config))
 
-    await set_menu(bot)
+    await set_menu(bot, config.bot.admin_ids)
 
     
 
