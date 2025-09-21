@@ -120,6 +120,14 @@ def create_kazan_question_url_keyboard() -> InlineKeyboardMarkup:
     )
     return builder.as_markup()
 
+def create_calculator_only_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text=LEXICON_RU['calculator'], callback_data='calculator')
+    )
+    return builder.as_markup()
+
+
 def create_rates_keyboard() -> None:
     return None
 

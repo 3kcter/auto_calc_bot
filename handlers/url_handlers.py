@@ -9,7 +9,7 @@ from lexicon.lexicon import LEXICON_RU
 from services.parser import parse_encar_requests, validate_and_normalize_url, parse_che168_requests
 from config.config import load_config, Config
 from handlers.calculator_handlers import send_calculation_result, CalculatorFSM
-from keyboards.keyboards import create_kazan_question_keyboard, create_kazan_question_url_keyboard
+from keyboards.keyboards import create_kazan_question_keyboard, create_kazan_question_url_keyboard, create_calculator_only_keyboard
 
 url_router = Router()
 
@@ -55,7 +55,10 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
         error = None
 
         if 'encar.com' in url:
-            car_data, error = await parse_encar_requests(url)
+            await message.answer(LEXICON_RU['encar_unavailable_with_calculator'], reply_markup=create_calculator_only_keyboard())
+            await processing_message.delete()
+            await state.clear()
+            return
         elif 'che168.com' in url:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as response:
