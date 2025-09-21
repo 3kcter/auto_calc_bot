@@ -118,7 +118,11 @@ async def process_url_sent(message: Message, state: FSMContext, config: Config):
             await processing_message.delete()
 
     except Exception as e:
-        await message.answer(f"Произошла ошибка при обработке ссылки.")
+        user_error_message = "Произошла ошибка при обработке ссылки. Пожалуйста, попробуйте другую ссылку или воспользуйтесь обычным калькулятором."
+        await message.answer(user_error_message)
         await processing_message.delete()
+        
+        admin_error_message = f"Произошла ошибка при обработке ссылки: {url}\nОшибка: {e}"
         for admin_id in config.bot.admin_ids:
-            await message.bot.send_message(admin_id, f"Произошла ошибка при обработке ссылки: {url}\n{e}")
+            if admin_id != message.from_user.id:
+                await message.bot.send_message(admin_id, admin_error_message)
