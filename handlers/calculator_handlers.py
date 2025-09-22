@@ -62,14 +62,14 @@ def get_calculation_details(data, costs):
     params_section = "\n".join(params_lines)
 
     payments_lines = [
-        f"🇷🇺 Таможенная пошлина: {format_number(round(costs['customs_payments']))} руб.",
-        f"📑 Таможенный сбор: {format_number(round(costs['customs_clearance']))} руб.",
-        f"♻️ Утилизационный сбор: {format_number(costs['recycling_fee'])} руб."
+        f"🇷🇺 Таможенная пошлина: \n• {format_number(round(costs['customs_payments']))} руб.",
+        f"📑 Таможенный сбор: \n• {format_number(round(costs['customs_clearance']))} руб.",
+        f"♻️ Утилизационный сбор: \n• {format_number(costs['recycling_fee'])} руб."
     ]
     if costs.get('excise_tax', 0) > 0:
-        payments_lines.insert(2, f"💸 Акциз: {format_number(round(costs['excise_tax']))} руб.")
+        payments_lines.insert(2, f"💸 Акциз: \n• {format_number(round(costs['excise_tax']))} руб.")
     if costs.get('vat', 0) > 0:
-        payments_lines.append(f"📊 НДС: {format_number(round(costs['vat']))} руб.")
+        payments_lines.append(f"📊 НДС: \n• {format_number(round(costs['vat']))} руб.")
 
     payments_section = "\n".join(payments_lines)
 
@@ -101,7 +101,7 @@ async def send_calculation_result(message_or_callback, state: FSMContext, config
         f"⎯⎯⎯⎯⎯⎯⎯⎯⎯\n\n"
         f"<b>Расчётные платежи:</b>\n\n{payments_section}\n\n"
         f"⎯⎯⎯⎯⎯⎯⎯⎯⎯\n\n"
-        f"<b>Итого:</b> <b><code>{total_cost_rub_formatted}</code></b> руб."
+        f"<b>Итого:</b> <code>{total_cost_rub_formatted}</code> руб."
     )
 
     output_text += "\n\n⚠️ Курсы валют часто меняются, поэтому для уверенности советуем запросить актуальный расчёт у менеджера"
@@ -143,23 +143,23 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
 
     additional_expenses_lines = []
     if data['country'] == 'korea':
-        additional_expenses_lines.append(f"🇰🇷 Комиссия дилера: {format_number(round(costs['dealer_commission']))} руб.")
-        additional_expenses_lines.append(f"🚛 Транспорт по Корее: {format_number(round(costs['korea_inland_transport']))} руб.")
-        additional_expenses_lines.append(f"🚢 Погрузка и фрахт: {format_number(round(costs['korea_port_transport_loading']))} руб.")
-        additional_expenses_lines.append(f"🇷🇺 Расходы по Владивостоку: {format_number(round(costs['vladivostok_expenses']))} руб.")
-        additional_expenses_lines.append(f"🚚 Доставка до вашего города: {format_number(round(costs['logistics_vladivostok_kazan']))} руб.")
-        additional_expenses_lines.append(f"📎 Прочие расходы: {format_number(round(costs['other_expenses']))} руб.")
+        additional_expenses_lines.append(f"🇰🇷 Комиссия дилера: \n• {format_number(round(costs['dealer_commission']))} руб.")
+        additional_expenses_lines.append(f"🚛 Транспорт по Корее: \n• {format_number(round(costs['korea_inland_transport']))} руб.")
+        additional_expenses_lines.append(f"🚢 Погрузка и фрахт: \n• {format_number(round(costs['korea_port_transport_loading']))} руб.")
+        additional_expenses_lines.append(f"🇷🇺 Расходы по Владивостоку: \n• {format_number(round(costs['vladivostok_expenses']))} руб.")
+        additional_expenses_lines.append(f"🚚 Доставка до вашего города: \n• {format_number(round(costs['logistics_vladivostok_kazan']))} руб.")
+        additional_expenses_lines.append(f"📎 Прочие расходы: \n• {format_number(round(costs['other_expenses']))} руб.")
     elif data['country'] == 'china':
-        additional_expenses_lines.append(f"🇨🇳 Комиссия дилера: {format_number(round(costs['dealer_commission']))} руб.")
-        additional_expenses_lines.append(f"📦 Доставка документов: {format_number(round(costs['china_documents_delivery']))} руб.")
-        additional_expenses_lines.append(f"🚚 Логистика: {format_number(round(costs['logistics_cost']))} руб.")
+        additional_expenses_lines.append(f"🇨🇳 Комиссия дилера: \n• {format_number(round(costs['dealer_commission']))} руб.")
+        additional_expenses_lines.append(f"📦 Доставка до Казахстана и документы: \n• {format_number(round(costs['china_documents_delivery']))} руб.")
+        additional_expenses_lines.append(f"🚚 Логистика: \n• {format_number(round(costs['logistics_cost']))} руб.")
         if costs.get('lab_svh_cost', 0) > 0:
-            additional_expenses_lines.append(f"🔬 Лаборатория и СВХ: {format_number(round(costs['lab_svh_cost']))} руб.")
-        additional_expenses_lines.append(f"📎 Прочие расходы: {format_number(round(costs['other_expenses']))} руб.")
+            additional_expenses_lines.append(f"🔬 Лаборатория и СВХ: \n• {format_number(round(costs['lab_svh_cost']))} руб.")
+        additional_expenses_lines.append(f"📎 Прочие расходы: \n• {format_number(round(costs['other_expenses']))} руб.")
 
     if costs.get('delivery_to_region_cost', 0) > 0:
         label = LEXICON_RU['lab_svh_not_kazan_rub']
-        additional_expenses_lines.append(f"🔬 {label}: {format_number(round(costs['delivery_to_region_cost']))} руб.")
+        additional_expenses_lines.append(f"🔬 {label}: \n• {format_number(round(costs['delivery_to_region_cost']))} руб.")
     
     additional_expenses_section = "\n".join(additional_expenses_lines)
     country_name = "Корея" if data['country'] == 'korea' else "Китай"
@@ -173,7 +173,7 @@ async def process_detailed_calculation_press(callback: CallbackQuery, state: FSM
         f"⎯⎯⎯⎯⎯⎯⎯⎯⎯\n\n"
         f"<b>Дополнительные расходы ({country_name}):</b>\n\n{additional_expenses_section}\n\n"
         f"⎯⎯⎯⎯⎯⎯⎯⎯⎯\n\n"
-        f"<b>Итоговая стоимость:</b> <b><code>{total_cost_rub_formatted}</code></b> руб.")
+        f"<b>Итоговая стоимость:</b> <code>{total_cost_rub_formatted}</code> руб.")
     output_text += "\n\n⚠️ Курсы валют часто меняются, поэтому для уверенности советуем запросить актуальный расчёт у менеджера"
     await callback.message.answer(text=output_text, parse_mode="HTML")
     await callback.answer()
