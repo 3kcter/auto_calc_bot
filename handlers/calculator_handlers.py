@@ -10,7 +10,8 @@ from lexicon.lexicon import LEXICON_RU
 from keyboards.keyboards import (
     create_year_keyboard, create_cost_keyboard, create_volume_keyboard,
     create_country_keyboard, create_after_calculation_keyboard,
-    create_engine_type_keyboard, create_kazan_question_keyboard, create_hybrid_type_keyboard
+    create_engine_type_keyboard, create_kazan_question_keyboard, create_hybrid_type_keyboard,
+    create_restart_keyboard
 )
 from services.calculator import calculate_cost
 from services.menu_utils import send_start_menu
@@ -196,11 +197,20 @@ async def process_back_press(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
 
     if current_state == CalculatorFSM.year:
-        await callback.message.delete()
-        await send_start_menu(callback.message, state)
+        await callback.message.edit_text(
+            text="Выберите способ расчета:",
+            reply_markup=create_restart_keyboard()
+        )
+        await state.clear()
     elif current_state == CalculatorFSM.engine_type:
         await callback.message.edit_text(text=LEXICON_RU['select_year'], reply_markup=create_year_keyboard())
         await state.set_state(CalculatorFSM.year)
+    elif current_state == CalculatorFSM.url:
+        await callback.message.edit_text(
+            text="Выберите способ расчета:",
+            reply_markup=create_restart_keyboard()
+        )
+        await state.clear()
     elif current_state == CalculatorFSM.hybrid_type:
         await callback.message.edit_text(text=f"{LEXICON_RU['select_engine_type']}", reply_markup=create_engine_type_keyboard())
         await state.set_state(CalculatorFSM.engine_type)

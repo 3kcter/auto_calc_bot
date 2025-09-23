@@ -58,7 +58,8 @@ async def process_start_callback(callback: CallbackQuery, state: FSMContext, bot
 
 @common_router.callback_query(F.data == 'restart_calculation')
 async def process_restart_calculation(callback: CallbackQuery, state: FSMContext):
-    await callback.message.edit_text(
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await callback.message.answer(
         text="Выберите способ расчета:",
         reply_markup=create_restart_keyboard()
     )
